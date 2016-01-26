@@ -4,68 +4,83 @@ import (
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/mvdan/xurls"
+	"log"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
 )
+
+func storeTweet(tweetMap map[string]*anaconda.Tweet, tweet *anaconda.Tweet, log *log.Logger) {
+	tweetMap[tweet.IdStr] = tweet
+	urls := xurls.Relaxed.FindAllString(tweet.Text, -1)
+	if len(urls) > 0 {
+		log.Println("urls - ", urls)
+	}
+}
+
+func initLog() *log.Logger {
+	file, err := os.OpenFile("log.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln("Failed to open log file:", err)
+	}
+
+	return log.New(file,
+		"PREFIX: ",
+		log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+func cleanup() {
+	fmt.Println("\nExiting!")
+}
 
 func main() {
 	trackWords := os.Args[1:]
 	if len(trackWords) < 1 {
 		panic("Need to supply at least one words to track")
 	}
-	tweets := make(map[string]anaconda.Tweet)
+	// setup listening to CTRL-C
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		cleanup()
+		os.Exit(1)
+	}()
+	Logger := initLog()
+
+	tweets := make(map[string]*anaconda.Tweet)
 	anaconda.SetConsumerKey("TgFsDmBWfiQb7i0QhyGkgA")
 	anaconda.SetConsumerSecret("nDKbC8diEDeYq5ZN4QOv2RhxfyX4UebX0ZtbqPVDU")
 	api := anaconda.NewTwitterApi("244167420-jOu3uiiBvZS7m5JkXaDhIQROjc1jooBYgawSD7Q2", "eQHohTUq4e63DlnrxZ9wZ43g7R5eKTX7tau2m0WewjlU2")
 	v := url.Values{}
 	v.Set("track", strings.Join(trackWords, ", "))
-	fmt.Println("Tracking - " + strings.Join(trackWords, ", "))
-	api.SetLogger(anaconda.BasicLogger)
+	Logger.Println("Tracking - " + strings.Join(trackWords, ", "))
 	stream := api.PublicStreamFilter(v)
-	k := 0
+
 	for o := range stream.C {
 		t, ok := o.(anaconda.Tweet) // try casting into a tweet
 		if ok {
-			k++
-			if !t.Retweeted {
-				fmt.Print("Original:\t")
-				tweets[t.IdStr] = t
-				urls := xurls.Relaxed.FindAllString(t.Text, -1)
-				fmt.Print("urls - ")
-				fmt.Println(urls)
+			if t.RetweetedStatus == nil {
+				Logger.Print("Original:\t")
+				storeTweet(tweets, &t, Logger)
 			} else {
-				fmt.Print("Retweet:\t")
-				sourceTweet, ok := tweets[t.Source]
+				Logger.Print("Retweet:\t")
+				originalTweet := t.RetweetedStatus
+				Logger.Print("Retweet count:", originalTweet.RetweetCount, "\n")
+				sourceTweet, ok := tweets[originalTweet.IdStr]
 				if ok {
-					sourceTweet.RetweetCount++
+					// refresh the retweet count
+					sourceTweet.RetweetCount = originalTweet.RetweetCount
+				} else {
+					storeTweet(tweets, originalTweet, Logger)
 				}
 			}
-			fmt.Println(t.Text)
-		}
-		if k > 10 {
-			break
+			Logger.Println(t.Text)
 		}
 	}
-	fmt.Println("")
-	fmt.Println("")
-	fmt.Println("")
+	// this is never reachanble but should be moved to cleaning or some other place
 	for key, value := range tweets {
-		fmt.Println("Key:", key, "Value:", value.Text, "IsRetweet", value.Retweeted)
+		Logger.Println("Key:", key, "Value:", value.Text, "Retweetes:", value.RetweetCount)
 	}
-	// v := url.Values{}
-	// v.Set("count", "30")
-	// searchResult, _ := api.GetSearch("golang", v)
-	// for _, tweet := range searchResult.Statuses {
-	// 	fmt.Println(tweet.User.Name + ":" + tweet.Text)
-	// 	urls := xurls.Relaxed.FindAllString(tweet.Text, -1)
-	// 	fmt.Print("urls - ")
-	// 	fmt.Println(urls)
-	// 	fmt.Println(fmt.Sprintf("favorited - %d, retweeted - %d", tweet.FavoriteCount, tweet.RetweetCount))
-	// 	if tweet.RetweetedStatus != nil {
-	// 		fmt.Println("Retweeted!!!")
-	// 	} else {
-	// 		fmt.Println("Original")
-	// 	}
-	// }
 }
