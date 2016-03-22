@@ -23,7 +23,7 @@ func (w *words) Set(value string) error {
 		return errors.New("words flag already set")
 	}
 	for _, dt := range strings.Split(value, ",") {
-		trackingWord := dt
+		trackingWord := strings.ToLower(dt)
 		*w = append(*w, trackingWord)
 	}
 	return nil
