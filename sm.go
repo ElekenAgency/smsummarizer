@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/ChimeraCoder/anaconda"
 	"github.com/gin-gonic/gin"
 	"log"
 	"os"
@@ -46,14 +45,14 @@ func init() {
 func main() {
 	flag.Parse()
 	Logger = initLog()
-	tweets, comm := make(chan *anaconda.Tweet), make(chan int)
-	go dataManager(trackingWords, Logger, tweetsNumber, tweets, comm)
+	tweets, comm := make(chan *TweetsData), make(chan interface{})
+	go processor(comm, tweets)
 	router := gin.Default()
 	router.GET("/", func(c *gin.Context) {
 		comm <- 1
-		tweet := <-tweets
+		tweetsData := <-tweets
 		c.JSON(200, gin.H{
-			"message": tweet.Text,
+			"message": tweetsData.tweets[0],
 		})
 	})
 	router.Run()

@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/mvdan/xurls"
-	"log"
 	"net/url"
 	"strings"
 )
@@ -34,9 +32,13 @@ func summary(tweets map[string]map[string]*anaconda.Tweet) {
 	}
 }
 
-func dataManager(words []string, log *log.Logger, tweetsNumber *int, req chan<- *anaconda.Tweet, ask <-chan int) {
-	trackingWords = words
-	Logger = log
+type TweetsData struct {
+	tweets  []*anaconda.Tweet
+	favInd  []int
+	retwInd []int
+}
+
+func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan interface{}) {
 	if len(trackingWords) < 1 {
 		panic("Need to supply at least one words to track")
 	}
@@ -75,11 +77,7 @@ func dataManager(words []string, log *log.Logger, tweetsNumber *int, req chan<- 
 				count = count - 1
 			}
 		case <-ask:
-			fmt.Println("asking for a tweet ")
-			for _, val := range tweets[trackingWords[0]] {
-				req <- val
-				break
-			}
+			req <- tweets[trackingWords[0]]
 		}
 	}
 }
