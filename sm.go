@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/ChimeraCoder/anaconda"
 	"github.com/gin-gonic/gin"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 )
@@ -42,18 +44,53 @@ func init() {
 	}()
 }
 
+func isBeingTracked(word string) bool {
+	for _, trackedWord := range trackingWords {
+		if word == trackedWord {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
 	flag.Parse()
 	Logger = initLog()
 	tweets, comm := make(chan *TweetsData), make(chan interface{})
 	go processor(comm, tweets)
+
 	router := gin.Default()
+	router.LoadHTMLGlob("templates/*")
+	// index router
 	router.GET("/", func(c *gin.Context) {
-		comm <- 1
-		tweetsData := <-tweets
-		c.JSON(200, gin.H{
-			"message": tweetsData.tweets[0],
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{
+			"title": "Main website",
+			"words": trackingWords,
 		})
+	})
+	// This handler will match /user/john but will not match neither /user/ or /user
+	router.GET("/:word", func(c *gin.Context) {
+		comm <- 1
+		td := <-tweets
+		// maybe move this logic in processor since there is not need for it here
+		// or find out the way to sort by index
+		// TODO fix sorting here
+		tweetsByLikes := make([]*anaconda.Tweet, len(td.tweets))
+		tweetsByRetweets := make([]*anaconda.Tweet, len(td.tweets))
+		for i := range td.favInd {
+			tweetsByLikes[i] = td.tweets[td.favInd[i]]
+			tweetsByRetweets[i] = td.tweets[td.retwInd[i]]
+		}
+		word := c.Param("word")
+		if isBeingTracked(word) {
+			c.HTML(http.StatusOK, "word.tmpl", gin.H{
+				"title":            "Main website",
+				"tweetsByLikes":    tweetsByLikes[1:10],
+				"tweetsByRetweets": tweetsByRetweets[1:10],
+			})
+		} else {
+			c.String(http.StatusNotFound, "This words is not followed")
+		}
 	})
 	router.Run()
 }
