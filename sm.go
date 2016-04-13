@@ -66,65 +66,73 @@ func getStats(tweets chan *TweetsData, comm chan interface{}) ([]*anaconda.Tweet
 	return td.tweetsByFav, td.tweetsByRet
 }
 
-func main() {
-	flag.Parse()
-	Logger = initLog()
+func GetMainEngine() *gin.Engine {
 	tweets, comm := make(chan *TweetsData), make(chan interface{})
 	go processor(comm, tweets)
-
-	router := gin.Default()
-	router.LoadHTMLGlob("templates/*")
+	r := gin.Default()
+	r.LoadHTMLGlob("templates/*")
 	// index router
-	router.GET("/", func(c *gin.Context) {
+	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"title": "Main website",
 			"words": trackingWords,
 		})
 	})
-	router.GET("/api", func(c *gin.Context) {
+	r.GET("/api", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"title": "APIs",
 			"words": trackingWords,
 		})
 	})
-	// This handler will match /user/john but will not match neither /user/ or /user
-	router.GET("/web/:word", func(c *gin.Context) {
-		word := c.Param("word")
-		if isBeingTracked(word) {
-			tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
-			if len(tweetsByLikes) > 10 {
-				tweetsByLikes = tweetsByLikes[0:10]
-				tweetsByRetweets = tweetsByRetweets[0:10]
+	web := r.Group("/web")
+	{
+		web.GET("/:word", func(c *gin.Context) {
+			word := c.Param("word")
+			if isBeingTracked(word) {
+				tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
+				if len(tweetsByLikes) > 10 {
+					tweetsByLikes = tweetsByLikes[0:10]
+					tweetsByRetweets = tweetsByRetweets[0:10]
+				}
+				c.HTML(http.StatusOK, "word.tmpl", gin.H{
+					"title":            "Main website",
+					"tweetsByLikes":    tweetsByLikes,
+					"tweetsByRetweets": tweetsByRetweets,
+				})
+			} else {
+				c.String(http.StatusNotFound, "This words is not followed")
 			}
-			c.HTML(http.StatusOK, "word.tmpl", gin.H{
-				"title":            "Main website",
-				"tweetsByLikes":    tweetsByLikes,
-				"tweetsByRetweets": tweetsByRetweets,
-			})
-		} else {
-			c.String(http.StatusNotFound, "This words is not followed")
-		}
-	})
-	router.GET("/api/:word", func(c *gin.Context) {
-		word := c.Param("word")
-		if isBeingTracked(word) {
-			tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
-			if len(tweetsByLikes) > 10 {
-				tweetsByLikes = tweetsByLikes[0:10]
-				tweetsByRetweets = tweetsByRetweets[0:10]
+		})
+	}
+	api := r.Group("/api")
+	{
+		api.GET("/:word", func(c *gin.Context) {
+			word := c.Param("word")
+			if isBeingTracked(word) {
+				tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
+				if len(tweetsByLikes) > 10 {
+					tweetsByLikes = tweetsByLikes[0:10]
+					tweetsByRetweets = tweetsByRetweets[0:10]
+				}
+				// TODO Probably add marshaling if needed
+				tl := simplifyTweets(tweetsByLikes)
+				tr := simplifyTweets(tweetsByRetweets)
+				c.JSON(http.StatusOK, gin.H{
+					"tweetsByLikes":    tl,
+					"tweetsByRetweets": tr,
+				})
+			} else {
+				c.String(http.StatusNotFound, "This words is not followed")
 			}
-			// TODO Probably add marshaling if needed
-			tl := simplifyTweets(tweetsByLikes)
-			tr := simplifyTweets(tweetsByRetweets)
-			c.JSON(http.StatusOK, gin.H{
-				"tweetsByLikes":    tl,
-				"tweetsByRetweets": tr,
-			})
-		} else {
-			c.String(http.StatusNotFound, "This words is not followed")
-		}
-	})
-	router.Run()
+		})
+	}
+	return r
+}
+
+func main() {
+	flag.Parse()
+	Logger = initLog()
+	GetMainEngine().Run(":8080")
 }
 
 func (tweet TweetShort) MarshalJSON() ([]byte, error) {
