@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/ChimeraCoder/anaconda"
-	"github.com/bradfitz/slice"
+	"sort"
 )
 
 func processor(req <-chan interface{}, tweetsToDisplay chan<- *TweetsData) {
@@ -19,30 +19,36 @@ func processor(req <-chan interface{}, tweetsToDisplay chan<- *TweetsData) {
 	}
 }
 
+type ByFav []*anaconda.Tweet
+
+func (a ByFav) Len() int           { return len(a) }
+func (a ByFav) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByFav) Less(i, j int) bool { return a[i].FavoriteCount > a[j].FavoriteCount }
+
+type ByRet []*anaconda.Tweet
+
+func (a ByRet) Len() int           { return len(a) }
+func (a ByRet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByRet) Less(i, j int) bool { return a[i].RetweetCount > a[j].RetweetCount }
+
 func processTweets(tweetsMap map[string]*anaconda.Tweet) *TweetsData {
 	// we will use map
 	// type of max -> array of indexes
 	// array of tweets
 	// for some reason we need to use the ids because otherwise it appends to the end
 	tweets := make([]*anaconda.Tweet, len(tweetsMap))
-	id := 0
-	for _, tweet := range tweetsMap {
-		tweets[id] = tweet
-		id++
+	idx := 0
+	for key := range tweetsMap {
+		tweets[idx] = tweetsMap[key]
+		idx++
 	}
-	// get sorted by favorite
-	// somehow there is a memory problem here and I am not sure why
-	// try printing first and then using another way of sorting later
-	favInd := arrayIndexes(len(tweets))
-	slice.Sort(favInd[:], func(i, j int) bool {
-		return tweets[i].FavoriteCount < tweets[j].FavoriteCount
-	})
-	// get sorted by retweets
-	retwInd := arrayIndexes(len(tweets))
-	slice.Sort(retwInd[:], func(i, j int) bool {
-		return tweets[i].RetweetCount < tweets[j].RetweetCount
-	})
-	return &TweetsData{tweets, favInd, retwInd}
+	tweetsByFav := make([]*anaconda.Tweet, len(tweetsMap))
+	tweetsByRet := make([]*anaconda.Tweet, len(tweetsMap))
+	copy(tweetsByFav, tweets)
+	copy(tweetsByRet, tweets)
+	sort.Sort(ByFav(tweetsByFav))
+	sort.Sort(ByRet(tweetsByRet))
+	return &TweetsData{tweetsByFav, tweetsByRet}
 }
 
 func arrayIndexes(len int) []int {

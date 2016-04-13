@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+func simplifyTweets(tweets []*anaconda.Tweet) []TweetShort {
+	result := make([]TweetShort, len(tweets))
+	for i, tweet := range tweets {
+		result[i] = TweetShort{tweet.Text, tweet.FavoriteCount, tweet.RetweetCount}
+	}
+	return result
+}
+
 func storeTweet(tweetMap map[string]map[string]*anaconda.Tweet, tweet *anaconda.Tweet) {
 	for _, word := range trackingWords {
 		if strings.Contains(strings.ToLower(tweet.Text), word) {
@@ -33,9 +41,8 @@ func summary(tweets map[string]map[string]*anaconda.Tweet) {
 }
 
 type TweetsData struct {
-	tweets  []*anaconda.Tweet
-	favInd  []int
-	retwInd []int
+	tweetsByFav []*anaconda.Tweet
+	tweetsByRet []*anaconda.Tweet
 }
 
 func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan interface{}) {

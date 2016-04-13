@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
@@ -53,6 +54,18 @@ func isBeingTracked(word string) bool {
 	return false
 }
 
+type TweetShort struct {
+	text     string
+	likes    int
+	retweets int
+}
+
+func getStats(tweets chan *TweetsData, comm chan interface{}) ([]*anaconda.Tweet, []*anaconda.Tweet) {
+	comm <- 1
+	td := <-tweets
+	return td.tweetsByFav, td.tweetsByRet
+}
+
 func main() {
 	flag.Parse()
 	Logger = initLog()
@@ -68,25 +81,45 @@ func main() {
 			"words": trackingWords,
 		})
 	})
+	router.GET("/api", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{
+			"title": "APIs",
+			"words": trackingWords,
+		})
+	})
 	// This handler will match /user/john but will not match neither /user/ or /user
-	router.GET("/:word", func(c *gin.Context) {
-		comm <- 1
-		td := <-tweets
-		// maybe move this logic in processor since there is not need for it here
-		// or find out the way to sort by index
-		// TODO fix sorting here
-		tweetsByLikes := make([]*anaconda.Tweet, len(td.tweets))
-		tweetsByRetweets := make([]*anaconda.Tweet, len(td.tweets))
-		for i := range td.favInd {
-			tweetsByLikes[i] = td.tweets[td.favInd[i]]
-			tweetsByRetweets[i] = td.tweets[td.retwInd[i]]
-		}
+	router.GET("/web/:word", func(c *gin.Context) {
 		word := c.Param("word")
 		if isBeingTracked(word) {
+			tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
 			c.HTML(http.StatusOK, "word.tmpl", gin.H{
 				"title":            "Main website",
-				"tweetsByLikes":    tweetsByLikes[1:10],
-				"tweetsByRetweets": tweetsByRetweets[1:10],
+				"tweetsByLikes":    tweetsByLikes[0:9],
+				"tweetsByRetweets": tweetsByRetweets[0:9],
+			})
+		} else {
+			c.String(http.StatusNotFound, "This words is not followed")
+		}
+	})
+	router.GET("/api/:word", func(c *gin.Context) {
+		word := c.Param("word")
+		if isBeingTracked(word) {
+			tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
+			tl := simplifyTweets(tweetsByLikes[1:10])
+			fmt.Print(tl)
+			tr := simplifyTweets(tweetsByRetweets[1:10])
+			tlj, err := json.Marshal(tl)
+			fmt.Print(tlj)
+			if err != nil {
+				fmt.Println("error:", err)
+			}
+			trj, err := json.Marshal(tr)
+			if err != nil {
+				fmt.Println("error:", err)
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"tweetsByLikes":    trj,
+				"tweetsByRetweets": tlj,
 			})
 		} else {
 			c.String(http.StatusNotFound, "This words is not followed")
