@@ -92,10 +92,14 @@ func main() {
 		word := c.Param("word")
 		if isBeingTracked(word) {
 			tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
+			if len(tweetsByLikes) > 10 {
+				tweetsByLikes = tweetsByLikes[0:10]
+				tweetsByRetweets = tweetsByRetweets[0:10]
+			}
 			c.HTML(http.StatusOK, "word.tmpl", gin.H{
 				"title":            "Main website",
-				"tweetsByLikes":    tweetsByLikes[0:9],
-				"tweetsByRetweets": tweetsByRetweets[0:9],
+				"tweetsByLikes":    tweetsByLikes,
+				"tweetsByRetweets": tweetsByRetweets,
 			})
 		} else {
 			c.String(http.StatusNotFound, "This words is not followed")
@@ -105,25 +109,24 @@ func main() {
 		word := c.Param("word")
 		if isBeingTracked(word) {
 			tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
-			tl := simplifyTweets(tweetsByLikes[1:10])
-			fmt.Print(tl)
-			tr := simplifyTweets(tweetsByRetweets[1:10])
-			tlj, err := json.Marshal(tl)
-			fmt.Print(tlj)
-			if err != nil {
-				fmt.Println("error:", err)
+			if len(tweetsByLikes) > 10 {
+				tweetsByLikes = tweetsByLikes[0:10]
+				tweetsByRetweets = tweetsByRetweets[0:10]
 			}
-			trj, err := json.Marshal(tr)
-			if err != nil {
-				fmt.Println("error:", err)
-			}
+			// TODO Probably add marshaling if needed
+			tl := simplifyTweets(tweetsByLikes)
+			tr := simplifyTweets(tweetsByRetweets)
 			c.JSON(http.StatusOK, gin.H{
-				"tweetsByLikes":    trj,
-				"tweetsByRetweets": tlj,
+				"tweetsByLikes":    tl,
+				"tweetsByRetweets": tr,
 			})
 		} else {
 			c.String(http.StatusNotFound, "This words is not followed")
 		}
 	})
 	router.Run()
+}
+
+func (tweet TweetShort) MarshalJSON() ([]byte, error) {
+	return json.Marshal(tweet.text)
 }
