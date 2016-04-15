@@ -23,6 +23,6 @@ deploy:
         username: $USERNAME
         password: $PASSWORD
         tag: wercker
-        entrypoint: ./app -words obama
+        entrypoint: ./app
         repository: romantsegelskyi/summarizer
         registry: https://registry.hub.docker.com
