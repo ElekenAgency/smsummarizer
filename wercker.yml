@@ -44,7 +44,7 @@ deploy:
         ports: 5000
         cmd: /bin/bash -c "cd /pipeline/source && ./summarizer -words obama"
     - add-ssh-key:
-        keyname: digitalocean
+        keyname: DIGITAL_OCEAN
     - add-to-known_hosts:
         hostname: 162.243.99.74
     - script:

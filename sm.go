@@ -108,7 +108,7 @@ func GetMainEngine() *gin.Engine {
 	{
 		api.GET("/", func(c *gin.Context) {
 			c.HTML(http.StatusOK, "index.tmpl", gin.H{
-				"title": "APIs",
+				"title": "API",
 				"words": trackingWords,
 			})
 		})
