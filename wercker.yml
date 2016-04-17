@@ -1,7 +1,23 @@
 box: golang
+dev:
+  steps:
+    - setup-go-workspace:
+        package-dir: smsummarizer
+    - script:
+        name: go get
+        code: |
+            go get -t -v ./...
+    - internal/watch:
+        code: |
+            echo 'Building'
+            rm -rf smsummarizer
+            go build -v ./...
+            ./smsummarizer -words obama
+        reload: true
 build:
   steps:
-    - setup-go-workspace
+    - setup-go-workspace:
+        package-dir: smsummarizer
     - wercker/golint
     - script:
         name: go get
@@ -25,3 +41,5 @@ deploy:
         tag: wercker
         repository: romantsegelskyi/summarizer
         registry: https://registry.hub.docker.com
+        ports: 5000
+        cmd: /bin/bash -c "cd /pipeline/source && ./summarizer -words obama"

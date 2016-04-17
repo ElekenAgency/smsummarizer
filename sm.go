@@ -78,14 +78,14 @@ func GetMainEngine() *gin.Engine {
 			"words": trackingWords,
 		})
 	})
-	r.GET("/api", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"title": "APIs",
-			"words": trackingWords,
-		})
-	})
 	web := r.Group("/web")
 	{
+		web.GET("/", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "index.tmpl", gin.H{
+				"title": "Web",
+				"words": trackingWords,
+			})
+		})
 		web.GET("/:word", func(c *gin.Context) {
 			word := c.Param("word")
 			if isBeingTracked(word) {
@@ -106,6 +106,12 @@ func GetMainEngine() *gin.Engine {
 	}
 	api := r.Group("/api")
 	{
+		api.GET("/", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "index.tmpl", gin.H{
+				"title": "APIs",
+				"words": trackingWords,
+			})
+		})
 		api.GET("/:word", func(c *gin.Context) {
 			word := c.Param("word")
 			if isBeingTracked(word) {
@@ -132,7 +138,7 @@ func GetMainEngine() *gin.Engine {
 func main() {
 	flag.Parse()
 	Logger = initLog()
-	GetMainEngine().Run(":8080")
+	GetMainEngine().Run(":5000")
 }
 
 func (tweet TweetShort) MarshalJSON() ([]byte, error) {
