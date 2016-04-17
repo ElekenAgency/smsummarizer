@@ -38,8 +38,30 @@ deploy:
     - internal/docker-push:
         username: $USERNAME
         password: $PASSWORD
-        tag: wercker
+        tag: $WERCKER_GIT_COMMIT
         repository: romantsegelskyi/summarizer
         registry: https://registry.hub.docker.com
         ports: 5000
         cmd: /bin/bash -c "cd /pipeline/source && ./summarizer -words obama"
+    - add-ssh-key:
+        keyname: digitalocean
+    - add-to-known_hosts:
+        hostname: 162.243.99.74
+    - script:
+        name: pull latest image
+        code: ssh root@162.243.99.74 docker pull romantsegelskyi/summarizer:$WERCKER_GIT_COMMIT
+    - script:
+        name: stop running container
+        code: ssh root@162.243.99.74 docker stop summarizer || echo ‘failed to stop running container’
+    - script:
+        name: remove stopped container
+        code: ssh root@162.243.99.74 docker rm summarizer || echo ‘failed to remove stopped container’
+    - script:
+        name: remove image behind stopped container
+        code: ssh root@162.243.99.74 docker rmi romantsegelskyi/summarizer:current || echo ‘failed to remove image behind stopped container’
+    - script:
+        name: tag newly pulled image
+        code: ssh root@162.243.99.74 docker tag romantsegelskyi/summarizer:$WERKCER_GIT_COMMIT romantsegelskyi/summarizer:current
+    - script:
+        name: run new container
+        code: ssh root@162.243.99.74 docker run -d -p 8080:5000 --name summarizer romantsegelskyi/summarizer:current
