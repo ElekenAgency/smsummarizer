@@ -61,7 +61,7 @@ deploy:
         code: ssh root@162.243.99.74 docker rmi romantsegelskyi/summarizer:current || echo ‘failed to remove image behind stopped container’
     - script:
         name: tag newly pulled image
-        code: ssh root@162.243.99.74 docker tag romantsegelskyi/summarizer:$WERKCER_GIT_COMMIT romantsegelskyi/summarizer:current
+        code: ssh root@162.243.99.74 docker tag romantsegelskyi/summarizer:$WERCKER_GIT_COMMIT romantsegelskyi/summarizer:current
     - script:
         name: run new container
         code: ssh root@162.243.99.74 docker run -d -p 8080:5000 --name summarizer romantsegelskyi/summarizer:current
