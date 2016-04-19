@@ -19,6 +19,7 @@ func simplifyTweets(tweets []*anaconda.Tweet) []TweetShort {
 func storeTweet(tweetMap map[string]map[string]*anaconda.Tweet, tweet *anaconda.Tweet) {
 	for _, word := range trackingWords {
 		if strings.Contains(strings.ToLower(tweet.Text), word) {
+			fmt.Printf("Tweet has %s\n", word)
 			if tweetMap[word] == nil {
 				tweetMap[word] = make(map[string]*anaconda.Tweet)
 			}
@@ -36,7 +37,7 @@ type TweetsData struct {
 	tweetsByRet []*anaconda.Tweet
 }
 
-func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan interface{}) {
+func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 	if len(trackingWords) < 1 {
 		panic("Need to supply at least one words to track")
 	}
@@ -76,8 +77,8 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan interface{}) 
 				}
 				count = count - 1
 			}
-		case <-ask:
-			req <- tweets[trackingWords[0]]
+		case word := <-ask:
+			req <- tweets[word]
 		}
 	}
 }

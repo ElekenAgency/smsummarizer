@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 var saveAllLogs bool
@@ -19,9 +20,11 @@ func cleanup() {
 
 func init() {
 	flag.Var(&trackingWords, "words", "Words to track")
-	// setup listening to CTRL-C
+	// setup listening to CTRL-C and SIGTERM that docker send
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c,
+		syscall.SIGINT,
+		syscall.SIGTERM)
 	go func() {
 		<-c
 		cleanup()
@@ -44,14 +47,14 @@ type TweetShort struct {
 	retweets int
 }
 
-func getStats(tweets chan *TweetsData, comm chan interface{}) ([]*anaconda.Tweet, []*anaconda.Tweet) {
-	comm <- 1
+func getStats(word string, tweets chan *TweetsData, comm chan string) ([]*anaconda.Tweet, []*anaconda.Tweet) {
+	comm <- word
 	td := <-tweets
 	return td.tweetsByFav, td.tweetsByRet
 }
 
 func GetMainEngine() *gin.Engine {
-	tweets, comm := make(chan *TweetsData), make(chan interface{})
+	tweets, comm := make(chan *TweetsData), make(chan string)
 	go processor(comm, tweets)
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")
@@ -73,7 +76,7 @@ func GetMainEngine() *gin.Engine {
 		web.GET("/:word", func(c *gin.Context) {
 			word := c.Param("word")
 			if isBeingTracked(word) {
-				tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
+				tweetsByLikes, tweetsByRetweets := getStats(word, tweets, comm)
 				if len(tweetsByLikes) > 10 {
 					tweetsByLikes = tweetsByLikes[0:10]
 					tweetsByRetweets = tweetsByRetweets[0:10]
@@ -99,7 +102,7 @@ func GetMainEngine() *gin.Engine {
 		api.GET("/:word", func(c *gin.Context) {
 			word := c.Param("word")
 			if isBeingTracked(word) {
-				tweetsByLikes, tweetsByRetweets := getStats(tweets, comm)
+				tweetsByLikes, tweetsByRetweets := getStats(word, tweets, comm)
 				if len(tweetsByLikes) > 10 {
 					tweetsByLikes = tweetsByLikes[0:10]
 					tweetsByRetweets = tweetsByRetweets[0:10]

@@ -5,16 +5,16 @@ import (
 	"sort"
 )
 
-func processor(req <-chan interface{}, tweetsToDisplay chan<- *TweetsData) {
+func processor(req <-chan string, tweetsToDisplay chan<- *TweetsData) {
 	tweetsC := make(chan map[string]*anaconda.Tweet)
-	requestData := make(chan interface{})
+	requestData := make(chan string)
 	go dataManager(tweetsC, requestData)
 	for {
 		select {
 		case tweets := <-tweetsC:
 			tweetsToDisplay <- processTweets(tweets)
-		case <-req:
-			requestData <- 1
+		case word := <-req:
+			requestData <- word
 		}
 	}
 }
