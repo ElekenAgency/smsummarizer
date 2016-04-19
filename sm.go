@@ -6,27 +6,12 @@ import (
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 )
 
-var Logger *log.Logger
-
-func initLog() *log.Logger {
-	if *debugingMode {
-		return log.New(os.Stdout, "DEBUG:", log.Ldate|log.Ltime|log.Lshortfile)
-	}
-	file, err := os.OpenFile("log.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalln("Failed to open log file:", err)
-	}
-
-	return log.New(file,
-		"PREFIX: ",
-		log.Ldate|log.Ltime|log.Lshortfile)
-}
+var saveAllLogs bool
 
 func cleanup() {
 	fmt.Println("\nExiting!")
@@ -39,7 +24,6 @@ func init() {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		<-c
-
 		cleanup()
 		os.Exit(1)
 	}()
@@ -137,7 +121,6 @@ func GetMainEngine() *gin.Engine {
 
 func main() {
 	flag.Parse()
-	Logger = initLog()
 	GetMainEngine().Run(":5000")
 }
 

@@ -42,7 +42,7 @@ deploy:
         repository: romantsegelskyi/summarizer
         registry: https://registry.hub.docker.com
         ports: 5000
-        cmd: /bin/bash -c "cd /pipeline/source && ./app -words obama"
+        cmd: /bin/bash -c "cd /pipeline/source && ./app -words rstats,golang,python -log"
     - add-ssh-key:
         keyname: DIGITAL_OCEAN
     - add-to-known_hosts:

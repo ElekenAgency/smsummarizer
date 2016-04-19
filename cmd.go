@@ -29,7 +29,7 @@ func (w *words) Set(value string) error {
 	return nil
 }
 
-var debugingMode = flag.Bool("debug", false, "Debugging mode")
+var fullLog = flag.Bool("log", false, "Full logging mode")
 var isTesting = flag.Bool("testing", false, "Testing mode")
 var tweetsNumber = flag.Int("tweets", -1, "Number of tweets to be captured. By default, infinite")
 var trackingWords words

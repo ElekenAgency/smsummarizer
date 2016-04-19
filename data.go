@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/mvdan/xurls"
 	"net/url"
@@ -25,18 +26,8 @@ func storeTweet(tweetMap map[string]map[string]*anaconda.Tweet, tweet *anaconda.
 		}
 	}
 	urls := xurls.Relaxed.FindAllString(tweet.Text, -1)
-	if len(urls) > 0 {
-		Logger.Println("urls - ", urls)
-	}
-}
-
-func summary(tweets map[string]map[string]*anaconda.Tweet) {
-	Logger.Print("=== Summary ===")
-	for word := range tweets {
-		Logger.Print("\t" + word)
-		for _, tweet := range tweets[word] {
-			Logger.Printf("\t\t%s\n", tweet.Text)
-		}
+	if len(urls) > 0 && *fullLog {
+		fmt.Printf("The tweet has %d URLs\n", len(urls))
 	}
 }
 
@@ -56,7 +47,10 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan interface{}) 
 	api := anaconda.NewTwitterApi("244167420-jOu3uiiBvZS7m5JkXaDhIQROjc1jooBYgawSD7Q2", "eQHohTUq4e63DlnrxZ9wZ43g7R5eKTX7tau2m0WewjlU2")
 	v := url.Values{}
 	v.Set("track", strings.Join(trackingWords, ", "))
-	Logger.Println("Tracking - " + strings.Join(trackingWords, ", "))
+	fmt.Println("Tracking - " + strings.Join(trackingWords, ", "))
+	if *fullLog {
+		api.SetLogger(anaconda.BasicLogger)
+	}
 	stream := api.PublicStreamFilter(v)
 
 	count := 0
@@ -75,7 +69,6 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan interface{}) 
 					originalTweet := t.RetweetedStatus
 					storeTweet(tweets, originalTweet)
 				}
-				Logger.Println(t.Text)
 			}
 			if tweetsNumber != nil {
 				if count <= 0 {

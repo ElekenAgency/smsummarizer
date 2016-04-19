@@ -10,7 +10,6 @@ import (
 )
 
 func TestSimpleAPI(t *testing.T) {
-	Logger = initLog()
 	trackingWords = []string{"obama"}
 	ts := httptest.NewServer(GetMainEngine())
 	defer ts.Close()
