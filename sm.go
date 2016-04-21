@@ -24,7 +24,7 @@ func cleanup() {
 	dumpReq <- 1
 	tweets := <-dumpRes
 	jsonVal, _ := json.Marshal(tweets)
-	err := ioutil.WriteFile("dump", jsonVal, 0644)
+	err := ioutil.WriteFile("/tweets/dump", jsonVal, 0644)
 	if err != nil {
 		fmt.Println("Problems with saving the data")
 	}

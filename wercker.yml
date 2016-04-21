@@ -42,7 +42,7 @@ deploy:
         repository: romantsegelskyi/summarizer
         registry: https://registry.hub.docker.com
         ports: 5000
-        cmd: /bin/bash -c "cd /pipeline/source"
+        cmd: /bin/bash -c "cd /pipeline/source && ./app -words golang,rstatsython,scala -log"
     - add-ssh-key:
         keyname: DIGITAL_OCEAN
     - add-to-known_hosts:
@@ -76,4 +76,4 @@ deploy:
         code: ssh root@162.243.99.74 docker cp dump summarizer:/pipeline/source/dump
     - script:
         name: start the app
-        code: ssh root@162.243.99.74 docker exec summarizer cd /pipeline/source && ./app -words golang,rstats,python,scala -log
+        code: ssh root@162.243.99.74 docker exec summarizer cd /pipeline/source && 
