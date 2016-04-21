@@ -65,6 +65,8 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 	if err != nil {
 		fmt.Println("Failed to unmarshal the dump")
 		fmt.Println(err)
+	} else {
+		fmt.Println("Successfully restored the previous dump")
 	}
 	anaconda.SetConsumerKey("TgFsDmBWfiQb7i0QhyGkgA")
 	anaconda.SetConsumerSecret("nDKbC8diEDeYq5ZN4QOv2RhxfyX4UebX0ZtbqPVDU")
