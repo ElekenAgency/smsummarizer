@@ -54,9 +54,6 @@ deploy:
         name: kill app inside the container
         code: ssh root@162.243.99.74 docker exec summarizer pkill app
     - script:
-        name: copy dump
-        code: ssh root@162.243.99.74 docker cp summarizer:/pipeline/source/dump dump
-    - script:
         name: stop running container
         code: ssh root@162.243.99.74 docker stop summarizer || echo ‘failed to stop running container’
     - script:
@@ -70,10 +67,4 @@ deploy:
         code: ssh root@162.243.99.74 docker tag romantsegelskyi/summarizer:$WERCKER_GIT_COMMIT romantsegelskyi/summarizer:current
     - script:
         name: run new container
-        code: ssh root@162.243.99.74 docker run -d -p 8080:5000 --name summarizer romantsegelskyi/summarizer:current
-    - script:
-        name: copy dump into the container
-        code: ssh root@162.243.99.74 docker cp dump summarizer:/pipeline/source/dump
-    - script:
-        name: start the app
-        code: ssh root@162.243.99.74 docker exec summarizer cd /pipeline/source && 
+        code: ssh root@162.243.99.74 docker run -d -v tweets:/tweets -p 8080:5000 --name summarizer romantsegelskyi/summarizer:current
