@@ -42,7 +42,7 @@ deploy:
         repository: romantsegelskyi/summarizer
         registry: https://registry.hub.docker.com
         ports: 5000
-        cmd: /bin/bash -c "cd /pipeline/source && ./app -words rstats,golang,python -log"
+        cmd: /bin/bash -c "cd /pipeline/source"
     - add-ssh-key:
         keyname: DIGITAL_OCEAN
     - add-to-known_hosts:
@@ -50,6 +50,12 @@ deploy:
     - script:
         name: pull latest image
         code: ssh root@162.243.99.74 docker pull romantsegelskyi/summarizer:$WERCKER_GIT_COMMIT
+    - script: 
+        name: kill app inside the container
+        code: ssh root@162.243.99.74 docker exec summarizer pkill app
+    - script:
+        name: copy dump
+        code: ssh root@162.243.99.74 docker cp summarizer:/pipeline/source/dump dump
     - script:
         name: stop running container
         code: ssh root@162.243.99.74 docker stop summarizer || echo ‘failed to stop running container’
@@ -65,3 +71,9 @@ deploy:
     - script:
         name: run new container
         code: ssh root@162.243.99.74 docker run -d -p 8080:5000 --name summarizer romantsegelskyi/summarizer:current
+    - script:
+        name: copy dump into the container
+        code: ssh root@162.243.99.74 docker cp dump summarizer:/pipeline/source/dump
+    - script:
+        name: start the app
+        code: ssh root@162.243.99.74 docker exec summarizer cd /pipeline/source && ./app -words golang,rstats,python,scala -log
