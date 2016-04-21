@@ -6,16 +6,28 @@ import (
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-var saveAllLogs bool
+type dumpRequestChan chan interface{}
+type dumpResponceChan chan tweetsMap
+
+var dumpReq dumpRequestChan
+var dumpRes dumpResponceChan
 
 func cleanup() {
 	fmt.Println("\nExiting!")
+	dumpReq <- 1
+	tweets := <-dumpRes
+	jsonVal, _ := json.Marshal(tweets)
+	err := ioutil.WriteFile("dump", jsonVal, 0644)
+	if err != nil {
+		fmt.Println("Problems with saving the data")
+	}
 }
 
 func init() {
@@ -55,6 +67,7 @@ func getStats(word string, tweets chan *TweetsData, comm chan string) ([]*anacon
 
 func GetMainEngine() *gin.Engine {
 	tweets, comm := make(chan *TweetsData), make(chan string)
+	dumpReq, dumpRes = make(dumpRequestChan), make(dumpResponceChan)
 	go processor(comm, tweets)
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")

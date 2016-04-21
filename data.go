@@ -8,6 +8,18 @@ import (
 	"strings"
 )
 
+type tweetsMap map[string]map[string]*anaconda.Tweet
+
+func getValues(tweetIDtoTweet map[string]*anaconda.Tweet) []*anaconda.Tweet {
+	tweets := make([]*anaconda.Tweet, len(tweetIDtoTweet))
+	idx := 0
+	for key := range tweetIDtoTweet {
+		tweets[idx] = tweetIDtoTweet[key]
+		idx++
+	}
+	return tweets
+}
+
 func simplifyTweets(tweets []*anaconda.Tweet) []TweetShort {
 	result := make([]TweetShort, len(tweets))
 	for i, tweet := range tweets {
@@ -16,7 +28,7 @@ func simplifyTweets(tweets []*anaconda.Tweet) []TweetShort {
 	return result
 }
 
-func storeTweet(tweetMap map[string]map[string]*anaconda.Tweet, tweet *anaconda.Tweet) {
+func storeTweet(tweetMap tweetsMap, tweet *anaconda.Tweet) {
 	for _, word := range trackingWords {
 		if strings.Contains(strings.ToLower(tweet.Text), word) {
 			fmt.Printf("Tweet has %s\n", word)
@@ -42,7 +54,7 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 		panic("Need to supply at least one words to track")
 	}
 
-	tweets := make(map[string]map[string]*anaconda.Tweet)
+	tweets := make(tweetsMap)
 	anaconda.SetConsumerKey("TgFsDmBWfiQb7i0QhyGkgA")
 	anaconda.SetConsumerSecret("nDKbC8diEDeYq5ZN4QOv2RhxfyX4UebX0ZtbqPVDU")
 	api := anaconda.NewTwitterApi("244167420-jOu3uiiBvZS7m5JkXaDhIQROjc1jooBYgawSD7Q2", "eQHohTUq4e63DlnrxZ9wZ43g7R5eKTX7tau2m0WewjlU2")
@@ -79,6 +91,8 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 			}
 		case word := <-ask:
 			req <- tweets[word]
+		case <-dumpReq:
+			dumpRes <- tweets
 		}
 	}
 }

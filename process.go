@@ -36,12 +36,7 @@ func processTweets(tweetsMap map[string]*anaconda.Tweet) *TweetsData {
 	// type of max -> array of indexes
 	// array of tweets
 	// for some reason we need to use the ids because otherwise it appends to the end
-	tweets := make([]*anaconda.Tweet, len(tweetsMap))
-	idx := 0
-	for key := range tweetsMap {
-		tweets[idx] = tweetsMap[key]
-		idx++
-	}
+	tweets := getValues(tweetsMap)
 	tweetsByFav := make([]*anaconda.Tweet, len(tweetsMap))
 	tweetsByRet := make([]*anaconda.Tweet, len(tweetsMap))
 	copy(tweetsByFav, tweets)
