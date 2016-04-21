@@ -57,7 +57,7 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 	}
 
 	tweets := make(tweetsMap)
-	dumpContents, err := ioutil.ReadFile("dump")
+	dumpContents, err := ioutil.ReadFile("/tweets/dump")
 	if err != nil {
 		fmt.Println("Failed to restore the dump")
 	}

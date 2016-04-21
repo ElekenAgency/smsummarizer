@@ -52,7 +52,7 @@ deploy:
         code: ssh root@162.243.99.74 docker pull romantsegelskyi/summarizer:$WERCKER_GIT_COMMIT
     - script: 
         name: kill app inside the container
-        code: ssh root@162.243.99.74 docker exec summarizer pkill app
+        code: ssh root@162.243.99.74 docker exec summarizer pkill app || echo 'failed to kill the app'
     - script:
         name: stop running container
         code: ssh root@162.243.99.74 docker stop summarizer || echo ‘failed to stop running container’
