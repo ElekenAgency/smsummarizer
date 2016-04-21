@@ -139,7 +139,3 @@ func main() {
 	flag.Parse()
 	GetMainEngine().Run(":5000")
 }
-
-func (tweet TweetShort) MarshalJSON() ([]byte, error) {
-	return json.Marshal(tweet.text)
-}

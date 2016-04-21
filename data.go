@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/mvdan/xurls"
+	"io/ioutil"
 	"net/url"
 	"strings"
 )
@@ -55,6 +57,15 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 	}
 
 	tweets := make(tweetsMap)
+	dumpContents, err := ioutil.ReadFile("dump")
+	if err != nil {
+		fmt.Println("Failed to restore the dump")
+	}
+	err = json.Unmarshal(dumpContents, &tweets)
+	if err != nil {
+		fmt.Println("Failed to unmarshal the dump")
+		fmt.Println(err)
+	}
 	anaconda.SetConsumerKey("TgFsDmBWfiQb7i0QhyGkgA")
 	anaconda.SetConsumerSecret("nDKbC8diEDeYq5ZN4QOv2RhxfyX4UebX0ZtbqPVDU")
 	api := anaconda.NewTwitterApi("244167420-jOu3uiiBvZS7m5JkXaDhIQROjc1jooBYgawSD7Q2", "eQHohTUq4e63DlnrxZ9wZ43g7R5eKTX7tau2m0WewjlU2")
