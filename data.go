@@ -6,11 +6,20 @@ import (
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/mvdan/xurls"
 	"io/ioutil"
+	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
+type linkData struct {
+	sourceTweets []*anaconda.Tweet
+	title        string
+	URL          string
+}
+
 type tweetsMap map[string]map[string]*anaconda.Tweet
+type linksMap map[string]map[string]*linkData
 
 func getValues(tweetIDtoTweet map[string]*anaconda.Tweet) []*anaconda.Tweet {
 	tweets := make([]*anaconda.Tweet, len(tweetIDtoTweet))
@@ -30,19 +39,65 @@ func simplifyTweets(tweets []*anaconda.Tweet) []TweetShort {
 	return result
 }
 
-func storeTweet(tweetMap tweetsMap, tweet *anaconda.Tweet) {
-	for _, word := range trackingWords {
-		if strings.Contains(strings.ToLower(tweet.Text), word) {
-			fmt.Printf("Tweet has %s\n", word)
-			if tweetMap[word] == nil {
-				tweetMap[word] = make(map[string]*anaconda.Tweet)
+func expandURLs(urls []string) []*linkData {
+	resultingURLs := make([]*linkData, 0)
+	for _, url := range urls {
+		finalURL := url
+		var resp *http.Response
+		var err error
+		for {
+			resp, err = http.Get(finalURL)
+			if err == nil {
+				if finalURL == resp.Request.URL.String() {
+					break
+				}
+				finalURL = resp.Request.URL.String()
+			} else {
+				break
 			}
-			tweetMap[word][tweet.IdStr] = tweet
+		}
+		if finalURL != "" {
+			defer resp.Body.Close()
+			body, _ := ioutil.ReadAll(resp.Body)
+			r, _ := regexp.Compile("<title>(.*)</title>")
+			match := r.FindStringSubmatch(string(body))
+			var title string
+			if match != nil {
+				title = match[1]
+			}
+			resultingURLs = append(resultingURLs,
+				&linkData{sourceTweets: nil, title: title, URL: finalURL})
+		} else {
+			fmt.Printf("Couldn't find the final URL for %s", url)
 		}
 	}
+	return resultingURLs
+}
+
+func storeTweet(tweetMap tweetsMap, links linksMap, tweet *anaconda.Tweet) {
+	subWords := make([]string, 0)
 	urls := xurls.Relaxed.FindAllString(tweet.Text, -1)
-	if len(urls) > 0 && *fullLog {
-		fmt.Printf("The tweet has %d URLs\n", len(urls))
+	resultingURLs := expandURLs(urls)
+	for _, word := range trackingWords {
+		if strings.Contains(strings.ToLower(tweet.Text), word) {
+			subWords = append(subWords, word)
+			fmt.Printf("Tweet has %s\n", word)
+			if tweetMap[word] == nil || links[word] == nil {
+				tweetMap[word] = make(map[string]*anaconda.Tweet)
+				links[word] = make(map[string]*linkData)
+			}
+			tweetMap[word][tweet.IdStr] = tweet
+			for _, link := range resultingURLs {
+				ld, found := links[word][link.URL]
+				if found {
+					ld.sourceTweets = append(ld.sourceTweets, tweet)
+				} else {
+					link.sourceTweets = make([]*anaconda.Tweet, 1)
+					link.sourceTweets[0] = tweet
+					links[word][link.URL] = link
+				}
+			}
+		}
 	}
 }
 
@@ -57,6 +112,7 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 	}
 
 	tweets := make(tweetsMap)
+	links := make(linksMap)
 	dumpContents, err := ioutil.ReadFile("/tweets/dump")
 	if err != nil {
 		fmt.Println("Failed to restore the dump")
@@ -89,11 +145,11 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 			t, ok := o.(anaconda.Tweet)
 			if ok {
 				if t.RetweetedStatus == nil {
-					storeTweet(tweets, &t)
+					storeTweet(tweets, links, &t)
 				} else {
 					// TODO something better for retweets
 					originalTweet := t.RetweetedStatus
-					storeTweet(tweets, originalTweet)
+					storeTweet(tweets, links, originalTweet)
 				}
 			}
 			if tweetsNumber != nil {
