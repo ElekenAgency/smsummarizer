@@ -172,11 +172,17 @@ func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
 
 	tweets := make(wordToTweetMap)
 	links := make(wordToLinksMap)
-	dumpContents, err := ioutil.ReadFile("/tweets/dump")
+	dumpContents, err := ioutil.ReadFile("/tweets/dump_tweets")
 	if err != nil {
 		fmt.Println("Failed to restore the dump")
 	}
 	err = json.Unmarshal(dumpContents, &tweets)
+	// TODO Refactor this part
+	dumpContents, err = ioutil.ReadFile("/tweets/dump_links")
+	if err != nil {
+		fmt.Println("Failed to restore the dump")
+	}
+	err = json.Unmarshal(dumpContents, &links)
 	if err != nil {
 		fmt.Println("Failed to unmarshal the dump")
 		fmt.Println(err)

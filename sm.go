@@ -22,8 +22,14 @@ func cleanup() {
 	fmt.Println("\nExiting!")
 	dumpReq <- 1
 	tweetsAndLinks := <-dumpRes
-	jsonVal, _ := json.Marshal(tweetsAndLinks.tweets)
-	err := ioutil.WriteFile("/tweets/dump", jsonVal, 0644)
+	jsonVal, err := json.Marshal(tweetsAndLinks.tweets)
+	err = ioutil.WriteFile("/tweets/dump_tweets", jsonVal, 0644)
+	if err != nil {
+		fmt.Println("Problems with saving the data")
+	}
+
+	jsonVal, err = json.Marshal(tweetsAndLinks.links)
+	err = ioutil.WriteFile("/tweets/dump_links", jsonVal, 0644)
 	if err != nil {
 		fmt.Println("Problems with saving the data")
 	}
