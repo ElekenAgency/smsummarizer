@@ -14,7 +14,7 @@ import (
 )
 
 type dumpRequestChan chan interface{}
-type dumpResponceChan chan tweetsMap
+type dumpResponceChan chan *dump
 
 var dumpReq dumpRequestChan
 var dumpRes dumpResponceChan
@@ -22,8 +22,8 @@ var dumpRes dumpResponceChan
 func cleanup() {
 	fmt.Println("\nExiting!")
 	dumpReq <- 1
-	tweets := <-dumpRes
-	jsonVal, _ := json.Marshal(tweets)
+	tweetsAndLinks := <-dumpRes
+	jsonVal, _ := json.Marshal(tweetsAndLinks.tweets)
 	err := ioutil.WriteFile("/tweets/dump", jsonVal, 0644)
 	if err != nil {
 		fmt.Println("Problems with saving the data")
@@ -59,14 +59,14 @@ type TweetShort struct {
 	retweets int
 }
 
-func getStats(word string, tweets chan *TweetsData, comm chan string) ([]*anaconda.Tweet, []*anaconda.Tweet) {
+func getStats(word string, tweets chan *displayData, comm chan string) ([]*anaconda.Tweet, []*anaconda.Tweet) {
 	comm <- word
 	td := <-tweets
 	return td.tweetsByFav, td.tweetsByRet
 }
 
 func GetMainEngine() *gin.Engine {
-	tweets, comm := make(chan *TweetsData), make(chan string)
+	tweets, comm := make(chan *displayData), make(chan string)
 	dumpReq, dumpRes = make(dumpRequestChan), make(dumpResponceChan)
 	go processor(comm, tweets)
 	r := gin.Default()

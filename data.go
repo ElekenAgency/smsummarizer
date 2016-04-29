@@ -18,11 +18,41 @@ type linkData struct {
 	URL          string
 }
 
-type tweetsMap map[string]map[string]*anaconda.Tweet
-type linksMap map[string]map[string]*linkData
+type tweetsDisplay struct {
+	tweetsByFav tweetsSlice
+	tweetsByRet tweetsSlice
+}
 
-func getValues(tweetIDtoTweet map[string]*anaconda.Tweet) []*anaconda.Tweet {
-	tweets := make([]*anaconda.Tweet, len(tweetIDtoTweet))
+type linksDisplay struct {
+	linksByFav linksSlice
+	linksByRet linksSlice
+}
+
+type tweetsMap map[string]*anaconda.Tweet
+type linksMap map[string]*linkData
+type tweetsSlice []*anaconda.Tweet
+type linksSlice []*linkData
+
+type dataChannelValues struct {
+	tweets tweetsMap
+	links  linksMap
+}
+
+type displayData struct {
+	tweets *tweetsDisplay
+	links  *linksDisplay
+}
+
+type wordToTweetMap map[string]tweetsMap
+type wordToLinksMap map[string]linksMap
+
+type dump struct {
+	tweets wordToTweetMap
+	links  wordToLinksMap
+}
+
+func getValues(tweetIDtoTweet tweetsMap) []*anaconda.Tweet {
+	tweets := make(tweetsSlice, len(tweetIDtoTweet))
 	idx := 0
 	for key := range tweetIDtoTweet {
 		tweets[idx] = tweetIDtoTweet[key]
@@ -74,7 +104,7 @@ func expandURLs(urls []string) []*linkData {
 	return resultingURLs
 }
 
-func storeTweet(tweetMap tweetsMap, links linksMap, tweet *anaconda.Tweet) {
+func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.Tweet) {
 	subWords := make([]string, 0)
 	urls := xurls.Relaxed.FindAllString(tweet.Text, -1)
 	resultingURLs := expandURLs(urls)
@@ -101,18 +131,13 @@ func storeTweet(tweetMap tweetsMap, links linksMap, tweet *anaconda.Tweet) {
 	}
 }
 
-type TweetsData struct {
-	tweetsByFav []*anaconda.Tweet
-	tweetsByRet []*anaconda.Tweet
-}
-
-func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
+func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
 	if len(trackingWords) < 1 {
 		panic("Need to supply at least one words to track")
 	}
 
-	tweets := make(tweetsMap)
-	links := make(linksMap)
+	tweets := make(wordToTweetMap)
+	links := make(wordToLinksMap)
 	dumpContents, err := ioutil.ReadFile("/tweets/dump")
 	if err != nil {
 		fmt.Println("Failed to restore the dump")
@@ -159,9 +184,9 @@ func dataManager(req chan<- map[string]*anaconda.Tweet, ask <-chan string) {
 				count = count - 1
 			}
 		case word := <-ask:
-			req <- tweets[word]
+			req <- &dataChannelValues{tweets: tweets[word], links: links[word]}
 		case <-dumpReq:
-			dumpRes <- tweets
+			dumpReq <- &dump{tweets: tweets, links: links}
 		}
 	}
 }
