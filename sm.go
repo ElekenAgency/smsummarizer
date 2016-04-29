@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/ChimeraCoder/anaconda"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
@@ -59,10 +58,18 @@ type TweetShort struct {
 	retweets int
 }
 
-func getStats(word string, tweets chan *displayData, comm chan string) ([]*anaconda.Tweet, []*anaconda.Tweet) {
+func getStats(word string, process chan *displayData, comm chan string) *displayData {
 	comm <- word
-	td := <-tweets
-	return td.tweetsByFav, td.tweetsByRet
+	d := <-process
+	if len(d.tweets.tweetsByFav) > 10 {
+		d.tweets.tweetsByFav = d.tweets.tweetsByFav[0:10]
+		d.tweets.tweetsByRet = d.tweets.tweetsByRet[0:10]
+	}
+	if len(d.links.linksByFav) > 10 {
+		d.links.linksByFav = d.links.linksByFav[0:10]
+		d.links.linksByRet = d.links.linksByRet[0:10]
+	}
+	return d
 }
 
 func GetMainEngine() *gin.Engine {
@@ -89,43 +96,13 @@ func GetMainEngine() *gin.Engine {
 		web.GET("/:word", func(c *gin.Context) {
 			word := c.Param("word")
 			if isBeingTracked(word) {
-				tweetsByLikes, tweetsByRetweets := getStats(word, tweets, comm)
-				if len(tweetsByLikes) > 10 {
-					tweetsByLikes = tweetsByLikes[0:10]
-					tweetsByRetweets = tweetsByRetweets[0:10]
-				}
+				d := getStats(word, tweets, comm)
 				c.HTML(http.StatusOK, "word.tmpl", gin.H{
 					"title":            "Main website",
-					"tweetsByLikes":    tweetsByLikes,
-					"tweetsByRetweets": tweetsByRetweets,
-				})
-			} else {
-				c.String(http.StatusNotFound, "This words is not followed")
-			}
-		})
-	}
-	api := r.Group("/api")
-	{
-		api.GET("/", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "index.tmpl", gin.H{
-				"title": "API",
-				"words": trackingWords,
-			})
-		})
-		api.GET("/:word", func(c *gin.Context) {
-			word := c.Param("word")
-			if isBeingTracked(word) {
-				tweetsByLikes, tweetsByRetweets := getStats(word, tweets, comm)
-				if len(tweetsByLikes) > 10 {
-					tweetsByLikes = tweetsByLikes[0:10]
-					tweetsByRetweets = tweetsByRetweets[0:10]
-				}
-				// TODO Probably add marshaling if needed
-				tl := simplifyTweets(tweetsByLikes)
-				tr := simplifyTweets(tweetsByRetweets)
-				c.JSON(http.StatusOK, gin.H{
-					"tweetsByLikes":    tl,
-					"tweetsByRetweets": tr,
+					"tweetsByLikes":    d.tweets.tweetsByFav,
+					"tweetsByRetweets": d.tweets.tweetsByRet,
+					"linksByLikes":     d.links.linksByFav,
+					"linksByRetweets":  d.links.linksByRet,
 				})
 			} else {
 				c.String(http.StatusNotFound, "This words is not followed")

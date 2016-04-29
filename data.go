@@ -14,8 +14,10 @@ import (
 
 type linkData struct {
 	sourceTweets []*anaconda.Tweet
-	title        string
+	Title        string
 	URL          string
+	Retweets     int
+	Likes        int
 }
 
 type tweetsDisplay struct {
@@ -51,7 +53,17 @@ type dump struct {
 	links  wordToLinksMap
 }
 
-func getValues(tweetIDtoTweet tweetsMap) []*anaconda.Tweet {
+func getLinksValues(lm linksMap) linksSlice {
+	links := make(linksSlice, len(lm))
+	idx := 0
+	for key := range lm {
+		links[idx] = lm[key]
+		idx++
+	}
+	return links
+}
+
+func getTweetValues(tweetIDtoTweet tweetsMap) []*anaconda.Tweet {
 	tweets := make(tweetsSlice, len(tweetIDtoTweet))
 	idx := 0
 	for key := range tweetIDtoTweet {
@@ -86,22 +98,31 @@ func expandURLs(urls []string) []*linkData {
 				break
 			}
 		}
-		if finalURL != "" {
-			defer resp.Body.Close()
+		if finalURL != "" && resp != nil {
 			body, _ := ioutil.ReadAll(resp.Body)
-			r, _ := regexp.Compile("<title>(.*)</title>")
+			resp.Body.Close()
+			r, _ := regexp.Compile(".*<title>(.*)</title>.*")
 			match := r.FindStringSubmatch(string(body))
-			var title string
-			if match != nil {
+			title := "No title"
+			if len(match) > 1 {
 				title = match[1]
 			}
 			resultingURLs = append(resultingURLs,
-				&linkData{sourceTweets: nil, title: title, URL: finalURL})
+				&linkData{sourceTweets: nil, Title: title, URL: finalURL})
 		} else {
 			fmt.Printf("Couldn't find the final URL for %s", url)
 		}
 	}
 	return resultingURLs
+}
+
+func contains(s tweetsSlice, e *anaconda.Tweet) (*anaconda.Tweet, int) {
+	for i, a := range s {
+		if a.IdStr == e.IdStr {
+			return a, i
+		}
+	}
+	return nil, 0
 }
 
 func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.Tweet) {
@@ -120,10 +141,23 @@ func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.T
 			for _, link := range resultingURLs {
 				ld, found := links[word][link.URL]
 				if found {
-					ld.sourceTweets = append(ld.sourceTweets, tweet)
+					// check if it is already there
+					elem, id := contains(ld.sourceTweets, tweet)
+					if elem != nil {
+						ld.sourceTweets = append(ld.sourceTweets[:id], ld.sourceTweets[id+1:]...)
+						ld.sourceTweets = append(ld.sourceTweets, tweet)
+						ld.Retweets = ld.Retweets - elem.RetweetCount + tweet.RetweetCount
+						ld.Likes = ld.Likes - elem.RetweetCount + tweet.FavoriteCount
+					} else {
+						ld.sourceTweets = append(ld.sourceTweets, tweet)
+						ld.Retweets = ld.Retweets + tweet.RetweetCount
+						ld.Likes = ld.Likes + tweet.FavoriteCount
+					}
 				} else {
 					link.sourceTweets = make([]*anaconda.Tweet, 1)
 					link.sourceTweets[0] = tweet
+					link.Retweets = tweet.RetweetCount
+					link.Likes = tweet.FavoriteCount
 					links[word][link.URL] = link
 				}
 			}

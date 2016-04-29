@@ -20,4 +20,21 @@
 			</tr>
 			{{end}}
 		</table>
+		<h2>Most liked links:</h2>
+		<table>
+			{{range .linksByLikes}}
+			<tr>
+				<td><a href="{{.URL}}">{{.Title}}</a></td>
+				<td>{{.Likes}}</td>
+			</tr>
+			{{end}}
+		</table>
+		<h2>Most retweeted links:</h2>
+		<table>
+			{{range .linksByRetweets}}
+			<tr>
+				<td><a href="{{.URL}}">{{.Title}}</a></td>
+				<td>{{.Likes}}</td>
+			</tr>
+			{{end}}
 </html>

@@ -20,34 +20,53 @@ func processor(req <-chan string, displayChannel chan<- *displayData) {
 	}
 }
 
+type ByFavLink []*linkData
+
+func (a ByFavLink) Len() int           { return len(a) }
+func (a ByFavLink) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByFavLink) Less(i, j int) bool { return a[i].Likes > a[j].Likes }
+
+type ByRetLinks []*linkData
+
+func (a ByRetLinks) Len() int           { return len(a) }
+func (a ByRetLinks) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByRetLinks) Less(i, j int) bool { return a[i].Retweets > a[j].Retweets }
+
 func processLinks(lm linksMap) *linksDisplay {
-	return nil
+	links := getLinksValues(lm)
+	linksByFav := make(linksSlice, len(lm))
+	linksByRet := make(linksSlice, len(lm))
+	copy(linksByFav, links)
+	copy(linksByRet, links)
+	sort.Sort(ByFavLink(linksByFav))
+	sort.Sort(ByFavLink(linksByRet))
+	return &linksDisplay{linksByFav, linksByRet}
 }
 
-type ByFav []*anaconda.Tweet
+type ByFavTweet []*anaconda.Tweet
 
-func (a ByFav) Len() int           { return len(a) }
-func (a ByFav) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByFav) Less(i, j int) bool { return a[i].FavoriteCount > a[j].FavoriteCount }
+func (a ByFavTweet) Len() int           { return len(a) }
+func (a ByFavTweet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByFavTweet) Less(i, j int) bool { return a[i].FavoriteCount > a[j].FavoriteCount }
 
-type ByRet []*anaconda.Tweet
+type ByRetTweet []*anaconda.Tweet
 
-func (a ByRet) Len() int           { return len(a) }
-func (a ByRet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByRet) Less(i, j int) bool { return a[i].RetweetCount > a[j].RetweetCount }
+func (a ByRetTweet) Len() int           { return len(a) }
+func (a ByRetTweet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByRetTweet) Less(i, j int) bool { return a[i].RetweetCount > a[j].RetweetCount }
 
 func processTweets(tweetsMap map[string]*anaconda.Tweet) *tweetsDisplay {
 	// we will use map
 	// type of max -> array of indexes
 	// array of tweets
 	// for some reason we need to use the ids because otherwise it appends to the end
-	tweets := getValues(tweetsMap)
+	tweets := getTweetValues(tweetsMap)
 	tweetsByFav := make([]*anaconda.Tweet, len(tweetsMap))
 	tweetsByRet := make([]*anaconda.Tweet, len(tweetsMap))
 	copy(tweetsByFav, tweets)
 	copy(tweetsByRet, tweets)
-	sort.Sort(ByFav(tweetsByFav))
-	sort.Sort(ByRet(tweetsByRet))
+	sort.Sort(ByFavTweet(tweetsByFav))
+	sort.Sort(ByRetTweet(tweetsByRet))
 	return &tweetsDisplay{tweetsByFav, tweetsByRet}
 }
 
