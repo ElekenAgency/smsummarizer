@@ -11,7 +11,7 @@ func processor(req <-chan string, displayChannel chan<- *displayData) {
 	go dataManager(dataChannel, requestData)
 	for {
 		select {
-		case <-dumpReq:
+		case <-dReqC:
 			return
 		case tweetsAndLinks := <-dataChannel:
 			displayChannel <- &displayData{tweets: processTweets(tweetsAndLinks.tweets),

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/mvdan/xurls"
@@ -52,11 +51,6 @@ type displayData struct {
 type wordToTweetMap map[string]tweetsMap
 type wordToLinksMap map[string]linksMap
 
-type dump struct {
-	tweets wordToTweetMap
-	links  wordToLinksMap
-}
-
 func (lm linksMap) Put(key string, value *linkData) {
 	mutexLinks.Lock()
 	lm[key] = value
@@ -93,7 +87,7 @@ func getLinksValues(lm linksMap) linksSlice {
 	return links
 }
 
-func getTweetValues(tweetIDtoTweet tweetsMap) []*anaconda.Tweet {
+func getTweetValues(tweetIDtoTweet tweetsMap) tweetsSlice {
 	tweets := make(tweetsSlice, len(tweetIDtoTweet))
 	idx := 0
 	for key := range tweetIDtoTweet {
@@ -103,16 +97,8 @@ func getTweetValues(tweetIDtoTweet tweetsMap) []*anaconda.Tweet {
 	return tweets
 }
 
-func simplifyTweets(tweets []*anaconda.Tweet) []TweetShort {
-	result := make([]TweetShort, len(tweets))
-	for i, tweet := range tweets {
-		result[i] = TweetShort{tweet.Text, tweet.FavoriteCount, tweet.RetweetCount}
-	}
-	return result
-}
-
-func expandURLs(urls []string) []*linkData {
-	resultingURLs := make([]*linkData, 0)
+func expandURLs(urls []string) linksSlice {
+	resultingURLs := make(linksSlice, 0)
 	for _, url := range urls {
 		finalURL := url
 		var resp *http.Response
@@ -159,12 +145,12 @@ func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.T
 	subWords := make([]string, 0)
 	urls := xurls.Relaxed.FindAllString(tweet.Text, -1)
 	resultingURLs := expandURLs(urls)
-	for _, word := range trackingWords {
+	for _, word := range trackedWords {
 		if strings.Contains(strings.ToLower(tweet.Text), word) {
 			subWords = append(subWords, word)
 			if tweetMap[word] == nil || links[word] == nil {
-				tweetMap[word] = make(map[string]*anaconda.Tweet)
-				links[word] = make(map[string]*linkData)
+				tweetMap[word] = make(tweetsMap)
+				links[word] = make(linksMap)
 			}
 			tweetMap[word].Put(tweet.IdStr, tweet)
 			for _, link := range resultingURLs {
@@ -184,7 +170,7 @@ func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.T
 					}
 					links[word].Put(link.URL, ld)
 				} else {
-					link.sourceTweets = make([]*anaconda.Tweet, 1)
+					link.sourceTweets = make(tweetsSlice, 1)
 					link.sourceTweets[0] = tweet
 					link.Retweets = tweet.RetweetCount
 					link.Likes = tweet.FavoriteCount
@@ -196,45 +182,28 @@ func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.T
 }
 
 func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
-	if len(trackingWords) < 1 {
+	if len(trackedWords) < 1 {
 		panic("Need to supply at least one words to track")
 	}
-
+	// create structures and restore previous state
 	tweets := make(wordToTweetMap)
 	links := make(wordToLinksMap)
-	dumpContents, err := ioutil.ReadFile("/tweets/dump_tweets")
-	if err != nil {
-		fmt.Println("Failed to restore the dump")
-	}
-	err = json.Unmarshal(dumpContents, &tweets)
-	// TODO Refactor this part
-	dumpContents, err = ioutil.ReadFile("/tweets/dump_links")
-	if err != nil {
-		fmt.Println("Failed to restore the dump")
-	}
-	err = json.Unmarshal(dumpContents, &links)
-	if err != nil {
-		fmt.Println("Failed to unmarshal the dump")
-		fmt.Println(err)
-	} else {
-		fmt.Println("Successfully restored the previous dump")
-	}
+	readDumpContents(tweetsDumpPath, tweets)
+	readDumpContents(linksDumpPath, links)
+	// set Twitter credentials
 	anaconda.SetConsumerKey("TgFsDmBWfiQb7i0QhyGkgA")
 	anaconda.SetConsumerSecret("nDKbC8diEDeYq5ZN4QOv2RhxfyX4UebX0ZtbqPVDU")
 	api := anaconda.NewTwitterApi("244167420-jOu3uiiBvZS7m5JkXaDhIQROjc1jooBYgawSD7Q2", "eQHohTUq4e63DlnrxZ9wZ43g7R5eKTX7tau2m0WewjlU2")
+	// set tracking parameters
 	v := url.Values{}
-	v.Set("track", strings.Join(trackingWords, ", "))
-	fmt.Println("Tracking - " + strings.Join(trackingWords, ", "))
-	if *fullLog {
-		api.SetLogger(anaconda.BasicLogger)
-	}
+	v.Set("track", strings.Join(trackedWords, ", "))
 	stream := api.PublicStreamFilter(v)
-
+	// loop to process requests
 	for {
 		select {
-		case <-dumpReq:
+		case <-dReqC:
 			stream.Stop()
-			dumpRes <- &dump{tweets: tweets, links: links}
+			dRespC <- &dump{tweets: tweets, links: links}
 			return
 		case word := <-ask:
 			req <- &dataChannelValues{tweets: tweets[word], links: links[word]}
@@ -244,7 +213,6 @@ func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
 				if t.RetweetedStatus == nil {
 					go storeTweet(tweets, links, &t)
 				} else {
-					// TODO something better for retweets
 					originalTweet := t.RetweetedStatus
 					go storeTweet(tweets, links, originalTweet)
 				}

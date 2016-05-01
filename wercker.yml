@@ -42,6 +42,7 @@ deploy:
         repository: romantsegelskyi/summarizer
         registry: https://registry.hub.docker.com
         ports: 5000
+        env: ["SM_DUMP=/smdump"]
         cmd: /bin/bash -c "cd /pipeline/source && ./app -words golang,rstats,python,scala -log"
     - add-ssh-key:
         keyname: DIGITAL_OCEAN
@@ -67,4 +68,4 @@ deploy:
         code: ssh root@162.243.99.74 docker tag romantsegelskyi/summarizer:$WERCKER_GIT_COMMIT romantsegelskyi/summarizer:current
     - script:
         name: run new container
-        code: ssh root@162.243.99.74 docker run -d -v tweets:/tweets -p 8080:5000 --name summarizer romantsegelskyi/summarizer:current
+        code: ssh root@162.243.99.74 docker run -d -v smdump:/smdump -p 8080:5000 --name summarizer romantsegelskyi/summarizer:current

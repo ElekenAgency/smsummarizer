@@ -1,54 +1,48 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 )
 
-type dumpRequestChan chan interface{}
-type dumpResponceChan chan *dump
-
-var dumpReq dumpRequestChan
-var dumpRes dumpResponceChan
-var tweets chan *displayData
-var comm chan string
+var respC chan *displayData
+var reqC chan string
 
 func cleanup() {
 	fmt.Println("\nExiting!")
 	// send 2 request to tell both processor and data to end
-	dumpReq <- 1
-	dumpReq <- 1
-	tweetsAndLinks := <-dumpRes
-	jsonVal, err := json.Marshal(tweetsAndLinks.tweets)
-	err = ioutil.WriteFile("/tweets/dump_tweets", jsonVal, 0644)
-	if err != nil {
-		fmt.Println("Problems with saving the data")
-	}
-	jsonVal, err = json.Marshal(tweetsAndLinks.links)
-	err = ioutil.WriteFile("/tweets/dump_links", jsonVal, 0644)
-	if err != nil {
-		fmt.Println("Problems with saving the data")
-	}
-	close(dumpReq)
-	close(dumpRes)
-	close(tweets)
-	close(comm)
+	dReqC <- 1
+	dReqC <- 1
+	data := <-dRespC
+	writeDumpContents(tweetsDumpPath, data.tweets)
+	writeDumpContents(linksDumpPath, data.links)
+	close(dReqC)
+	close(dRespC)
+	close(respC)
+	close(reqC)
 }
 
 func init() {
-	flag.Var(&trackingWords, "words", "Words to track")
+	flag.Var(&trackedWords, "words", "Words to track")
 	// setup listening to CTRL-C and SIGTERM that docker send
 	c := make(chan os.Signal, 1)
 	signal.Notify(c,
 		syscall.SIGINT,
 		syscall.SIGTERM)
+	summarizerDumpPath := os.Getenv("SM_DUMP")
+	if summarizerDumpPath == "" {
+		summarizerDumpPath = "."
+	}
+	if _, err := os.Stat(summarizerDumpPath); err == nil {
+		tweetsDumpPath = path.Join(summarizerDumpPath, "dump_tweets")
+		linksDumpPath = path.Join(linksDumpPath, "dump_links")
+	}
 	go func() {
 		<-c
 		cleanup()
@@ -57,7 +51,7 @@ func init() {
 }
 
 func isBeingTracked(word string) bool {
-	for _, trackedWord := range trackingWords {
+	for _, trackedWord := range trackedWords {
 		if word == trackedWord {
 			return true
 		}
@@ -65,37 +59,31 @@ func isBeingTracked(word string) bool {
 	return false
 }
 
-type TweetShort struct {
-	text     string
-	likes    int
-	retweets int
-}
-
-func getStats(word string, process chan *displayData, comm chan string) *displayData {
-	comm <- word
-	d := <-process
-	if len(d.tweets.tweetsByFav) > 10 {
-		d.tweets.tweetsByFav = d.tweets.tweetsByFav[0:10]
-		d.tweets.tweetsByRet = d.tweets.tweetsByRet[0:10]
+func getDispayData(word string, respC chan *displayData, reqC chan string) *displayData {
+	reqC <- word
+	data := <-respC
+	if len(data.tweets.tweetsByFav) > 10 {
+		data.tweets.tweetsByFav = data.tweets.tweetsByFav[0:10]
+		data.tweets.tweetsByRet = data.tweets.tweetsByRet[0:10]
 	}
-	if len(d.links.linksByFav) > 10 {
-		d.links.linksByFav = d.links.linksByFav[0:10]
-		d.links.linksByRet = d.links.linksByRet[0:10]
+	if len(data.links.linksByFav) > 10 {
+		data.links.linksByFav = data.links.linksByFav[0:10]
+		data.links.linksByRet = data.links.linksByRet[0:10]
 	}
-	return d
+	return data
 }
 
 func GetMainEngine() *gin.Engine {
-	tweets, comm = make(chan *displayData), make(chan string)
-	dumpReq, dumpRes = make(dumpRequestChan), make(dumpResponceChan)
-	go processor(comm, tweets)
+	respC, reqC = make(chan *displayData), make(chan string)
+	dReqC, dRespC = make(dReqChan), make(dRespChan)
+	go processor(reqC, respC)
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")
 	// index router
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"title": "Main website",
-			"words": trackingWords,
+			"words": trackedWords,
 		})
 	})
 	web := r.Group("/web")
@@ -103,19 +91,19 @@ func GetMainEngine() *gin.Engine {
 		web.GET("/", func(c *gin.Context) {
 			c.HTML(http.StatusOK, "index.tmpl", gin.H{
 				"title": "Web",
-				"words": trackingWords,
+				"words": trackedWords,
 			})
 		})
 		web.GET("/:word", func(c *gin.Context) {
 			word := c.Param("word")
 			if isBeingTracked(word) {
-				d := getStats(word, tweets, comm)
+				data := getDispayData(word, respC, reqC)
 				c.HTML(http.StatusOK, "word.tmpl", gin.H{
 					"title":            "Main website",
-					"tweetsByLikes":    d.tweets.tweetsByFav,
-					"tweetsByRetweets": d.tweets.tweetsByRet,
-					"linksByLikes":     d.links.linksByFav,
-					"linksByRetweets":  d.links.linksByRet,
+					"tweetsByLikes":    data.tweets.tweetsByFav,
+					"tweetsByRetweets": data.tweets.tweetsByRet,
+					"linksByLikes":     data.links.linksByFav,
+					"linksByRetweets":  data.links.linksByRet,
 				})
 			} else {
 				c.String(http.StatusNotFound, "This words is not followed")

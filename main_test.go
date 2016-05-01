@@ -10,7 +10,7 @@ import (
 )
 
 func TestSimpleAPI(t *testing.T) {
-	trackingWords = []string{"obama"}
+	trackedWords = []string{"obama"}
 	ts := httptest.NewServer(GetMainEngine())
 	defer ts.Close()
 	time.Sleep(5000 * time.Millisecond)
