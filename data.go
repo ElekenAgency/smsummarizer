@@ -13,6 +13,9 @@ import (
 	"sync"
 )
 
+var mutexLinks = &sync.Mutex{}
+var mutexTweets = &sync.Mutex{}
+
 type linkData struct {
 	sourceTweets []*anaconda.Tweet
 	Title        string
@@ -55,32 +58,28 @@ type dump struct {
 }
 
 func (lm linksMap) Put(key string, value *linkData) {
-	var mutex = &sync.Mutex{}
-	mutex.Lock()
+	mutexLinks.Lock()
 	lm[key] = value
-	mutex.Unlock()
+	mutexLinks.Unlock()
 }
 
 func (lm linksMap) Get(key string) *linkData {
-	var mutex = &sync.Mutex{}
-	mutex.Lock()
+	mutexLinks.Lock()
 	val := lm[key]
-	mutex.Unlock()
+	mutexLinks.Unlock()
 	return val
 }
 
 func (tm tweetsMap) Put(key string, value *anaconda.Tweet) {
-	var mutex = &sync.Mutex{}
-	mutex.Lock()
+	mutexTweets.Lock()
 	tm[key] = value
-	mutex.Unlock()
+	mutexTweets.Unlock()
 }
 
 func (tm tweetsMap) Get(key string) *anaconda.Tweet {
-	var mutex = &sync.Mutex{}
-	mutex.Lock()
+	mutexTweets.Lock()
 	val := tm[key]
-	mutex.Unlock()
+	mutexTweets.Unlock()
 	return val
 }
 
@@ -163,7 +162,6 @@ func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.T
 	for _, word := range trackingWords {
 		if strings.Contains(strings.ToLower(tweet.Text), word) {
 			subWords = append(subWords, word)
-			fmt.Printf("Tweet has %s\n", word)
 			if tweetMap[word] == nil || links[word] == nil {
 				tweetMap[word] = make(map[string]*anaconda.Tweet)
 				links[word] = make(map[string]*linkData)
@@ -232,12 +230,14 @@ func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
 	}
 	stream := api.PublicStreamFilter(v)
 
-	count := 0
-	if tweetsNumber != nil {
-		count = *tweetsNumber
-	}
 	for {
 		select {
+		case <-dumpReq:
+			stream.Stop()
+			dumpRes <- &dump{tweets: tweets, links: links}
+			return
+		case word := <-ask:
+			req <- &dataChannelValues{tweets: tweets[word], links: links[word]}
 		case o := <-stream.C:
 			t, ok := o.(anaconda.Tweet)
 			if ok {
@@ -249,16 +249,7 @@ func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
 					go storeTweet(tweets, links, originalTweet)
 				}
 			}
-			if tweetsNumber != nil {
-				if count <= 0 {
-					break
-				}
-				count = count - 1
-			}
-		case word := <-ask:
-			req <- &dataChannelValues{tweets: tweets[word], links: links[word]}
-		case <-dumpReq:
-			dumpReq <- &dump{tweets: tweets, links: links}
+		default:
 		}
 	}
 }

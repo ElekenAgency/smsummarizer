@@ -14,7 +14,7 @@ func TestSimpleAPI(t *testing.T) {
 	ts := httptest.NewServer(GetMainEngine())
 	defer ts.Close()
 	time.Sleep(5000 * time.Millisecond)
-	res, err := http.Get(ts.URL + "/api/obama")
+	res, err := http.Get(ts.URL + "/web/obama")
 	if err != nil {
 		log.Fatal(err)
 	}

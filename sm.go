@@ -17,9 +17,13 @@ type dumpResponceChan chan *dump
 
 var dumpReq dumpRequestChan
 var dumpRes dumpResponceChan
+var tweets chan *displayData
+var comm chan string
 
 func cleanup() {
 	fmt.Println("\nExiting!")
+	// send 2 request to tell both processor and data to end
+	dumpReq <- 1
 	dumpReq <- 1
 	tweetsAndLinks := <-dumpRes
 	jsonVal, err := json.Marshal(tweetsAndLinks.tweets)
@@ -27,12 +31,15 @@ func cleanup() {
 	if err != nil {
 		fmt.Println("Problems with saving the data")
 	}
-
 	jsonVal, err = json.Marshal(tweetsAndLinks.links)
 	err = ioutil.WriteFile("/tweets/dump_links", jsonVal, 0644)
 	if err != nil {
 		fmt.Println("Problems with saving the data")
 	}
+	close(dumpReq)
+	close(dumpRes)
+	close(tweets)
+	close(comm)
 }
 
 func init() {
@@ -79,7 +86,7 @@ func getStats(word string, process chan *displayData, comm chan string) *display
 }
 
 func GetMainEngine() *gin.Engine {
-	tweets, comm := make(chan *displayData), make(chan string)
+	tweets, comm = make(chan *displayData), make(chan string)
 	dumpReq, dumpRes = make(dumpRequestChan), make(dumpResponceChan)
 	go processor(comm, tweets)
 	r := gin.Default()

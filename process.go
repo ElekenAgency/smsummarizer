@@ -11,11 +11,14 @@ func processor(req <-chan string, displayChannel chan<- *displayData) {
 	go dataManager(dataChannel, requestData)
 	for {
 		select {
+		case <-dumpReq:
+			return
 		case tweetsAndLinks := <-dataChannel:
 			displayChannel <- &displayData{tweets: processTweets(tweetsAndLinks.tweets),
 				links: processLinks(tweetsAndLinks.links)}
 		case word := <-req:
 			requestData <- word
+		default:
 		}
 	}
 }
