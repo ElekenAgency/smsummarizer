@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 type linkData struct {
@@ -53,11 +54,41 @@ type dump struct {
 	links  wordToLinksMap
 }
 
+func (lm linksMap) Put(key string, value *linkData) {
+	var mutex = &sync.Mutex{}
+	mutex.Lock()
+	lm[key] = value
+	mutex.Unlock()
+}
+
+func (lm linksMap) Get(key string) *linkData {
+	var mutex = &sync.Mutex{}
+	mutex.Lock()
+	val := lm[key]
+	mutex.Unlock()
+	return val
+}
+
+func (tm tweetsMap) Put(key string, value *anaconda.Tweet) {
+	var mutex = &sync.Mutex{}
+	mutex.Lock()
+	tm[key] = value
+	mutex.Unlock()
+}
+
+func (tm tweetsMap) Get(key string) *anaconda.Tweet {
+	var mutex = &sync.Mutex{}
+	mutex.Lock()
+	val := tm[key]
+	mutex.Unlock()
+	return val
+}
+
 func getLinksValues(lm linksMap) linksSlice {
 	links := make(linksSlice, len(lm))
 	idx := 0
 	for key := range lm {
-		links[idx] = lm[key]
+		links[idx] = lm.Get(key)
 		idx++
 	}
 	return links
@@ -67,7 +98,7 @@ func getTweetValues(tweetIDtoTweet tweetsMap) []*anaconda.Tweet {
 	tweets := make(tweetsSlice, len(tweetIDtoTweet))
 	idx := 0
 	for key := range tweetIDtoTweet {
-		tweets[idx] = tweetIDtoTweet[key]
+		tweets[idx] = tweetIDtoTweet.Get(key)
 		idx++
 	}
 	return tweets
@@ -137,7 +168,7 @@ func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.T
 				tweetMap[word] = make(map[string]*anaconda.Tweet)
 				links[word] = make(map[string]*linkData)
 			}
-			tweetMap[word][tweet.IdStr] = tweet
+			tweetMap[word].Put(tweet.IdStr, tweet)
 			for _, link := range resultingURLs {
 				ld, found := links[word][link.URL]
 				if found {
@@ -153,12 +184,13 @@ func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.T
 						ld.Retweets = ld.Retweets + tweet.RetweetCount
 						ld.Likes = ld.Likes + tweet.FavoriteCount
 					}
+					links[word].Put(link.URL, ld)
 				} else {
 					link.sourceTweets = make([]*anaconda.Tweet, 1)
 					link.sourceTweets[0] = tweet
 					link.Retweets = tweet.RetweetCount
 					link.Likes = tweet.FavoriteCount
-					links[word][link.URL] = link
+					links[word].Put(link.URL, link)
 				}
 			}
 		}
@@ -210,11 +242,11 @@ func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
 			t, ok := o.(anaconda.Tweet)
 			if ok {
 				if t.RetweetedStatus == nil {
-					storeTweet(tweets, links, &t)
+					go storeTweet(tweets, links, &t)
 				} else {
 					// TODO something better for retweets
 					originalTweet := t.RetweetedStatus
-					storeTweet(tweets, links, originalTweet)
+					go storeTweet(tweets, links, originalTweet)
 				}
 			}
 			if tweetsNumber != nil {
