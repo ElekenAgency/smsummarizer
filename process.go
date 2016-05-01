@@ -1,35 +1,34 @@
 package main
 
 import (
-	"github.com/ChimeraCoder/anaconda"
 	"sort"
 )
 
-func processor(req <-chan string, displayChannel chan<- *displayData) {
-	dataChannel := make(chan *dataChannelValues)
-	requestData := make(chan string)
-	go dataManager(dataChannel, requestData)
+func processor(reqMainC <-chan string, respMainC chan<- *displayData) {
+	respDataC := make(chan *dataChannelValues)
+	reqDataC := make(chan string)
+	go dataManager(respDataC, reqDataC)
 	for {
 		select {
 		case <-dReqC:
 			return
-		case tweetsAndLinks := <-dataChannel:
-			displayChannel <- &displayData{tweets: processTweets(tweetsAndLinks.tweets),
+		case tweetsAndLinks := <-respDataC:
+			respMainC <- &displayData{tweets: processTweets(tweetsAndLinks.tweets),
 				links: processLinks(tweetsAndLinks.links)}
-		case word := <-req:
-			requestData <- word
+		case word := <-reqMainC:
+			reqDataC <- word
 		default:
 		}
 	}
 }
 
-type ByFavLink []*linkData
+type ByFavLink linksSlice
 
 func (a ByFavLink) Len() int           { return len(a) }
 func (a ByFavLink) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByFavLink) Less(i, j int) bool { return a[i].Likes > a[j].Likes }
 
-type ByRetLinks []*linkData
+type ByRetLinks linksSlice
 
 func (a ByRetLinks) Len() int           { return len(a) }
 func (a ByRetLinks) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
@@ -46,26 +45,22 @@ func processLinks(lm linksMap) *linksDisplay {
 	return &linksDisplay{linksByFav, linksByRet}
 }
 
-type ByFavTweet []*anaconda.Tweet
+type ByFavTweet tweetsSlice
 
 func (a ByFavTweet) Len() int           { return len(a) }
 func (a ByFavTweet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByFavTweet) Less(i, j int) bool { return a[i].FavoriteCount > a[j].FavoriteCount }
 
-type ByRetTweet []*anaconda.Tweet
+type ByRetTweet tweetsSlice
 
 func (a ByRetTweet) Len() int           { return len(a) }
 func (a ByRetTweet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByRetTweet) Less(i, j int) bool { return a[i].RetweetCount > a[j].RetweetCount }
 
-func processTweets(tweetsMap map[string]*anaconda.Tweet) *tweetsDisplay {
-	// we will use map
-	// type of max -> array of indexes
-	// array of tweets
-	// for some reason we need to use the ids because otherwise it appends to the end
-	tweets := getTweetValues(tweetsMap)
-	tweetsByFav := make([]*anaconda.Tweet, len(tweetsMap))
-	tweetsByRet := make([]*anaconda.Tweet, len(tweetsMap))
+func processTweets(tm tweetsMap) *tweetsDisplay {
+	tweets := getTweetValues(tm)
+	tweetsByFav := make(tweetsSlice, len(tm))
+	tweetsByRet := make(tweetsSlice, len(tm))
 	copy(tweetsByFav, tweets)
 	copy(tweetsByRet, tweets)
 	sort.Sort(ByFavTweet(tweetsByFav))

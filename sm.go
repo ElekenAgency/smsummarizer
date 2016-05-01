@@ -41,7 +41,9 @@ func init() {
 	}
 	if _, err := os.Stat(summarizerDumpPath); err == nil {
 		tweetsDumpPath = path.Join(summarizerDumpPath, "dump_tweets")
-		linksDumpPath = path.Join(linksDumpPath, "dump_links")
+		linksDumpPath = path.Join(summarizerDumpPath, "dump_links")
+	} else {
+		fmt.Println("Specified dump path doesn't exist")
 	}
 	go func() {
 		<-c

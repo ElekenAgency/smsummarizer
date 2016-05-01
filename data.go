@@ -181,15 +181,15 @@ func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.T
 	}
 }
 
-func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
+func dataManager(pRespC chan<- *dataChannelValues, pReqC <-chan string) {
 	if len(trackedWords) < 1 {
 		panic("Need to supply at least one words to track")
 	}
 	// create structures and restore previous state
-	tweets := make(wordToTweetMap)
-	links := make(wordToLinksMap)
-	readDumpContents(tweetsDumpPath, tweets)
-	readDumpContents(linksDumpPath, links)
+	wtm := make(wordToTweetMap)
+	wlm := make(wordToLinksMap)
+	readDumpContents(tweetsDumpPath, wtm)
+	readDumpContents(linksDumpPath, wlm)
 	// set Twitter credentials
 	anaconda.SetConsumerKey("TgFsDmBWfiQb7i0QhyGkgA")
 	anaconda.SetConsumerSecret("nDKbC8diEDeYq5ZN4QOv2RhxfyX4UebX0ZtbqPVDU")
@@ -203,18 +203,18 @@ func dataManager(req chan<- *dataChannelValues, ask <-chan string) {
 		select {
 		case <-dReqC:
 			stream.Stop()
-			dRespC <- &dump{tweets: tweets, links: links}
+			dRespC <- &dump{tweets: wtm, links: wlm}
 			return
-		case word := <-ask:
-			req <- &dataChannelValues{tweets: tweets[word], links: links[word]}
+		case word := <-pReqC:
+			pRespC <- &dataChannelValues{tweets: wtm[word], links: wlm[word]}
 		case o := <-stream.C:
 			t, ok := o.(anaconda.Tweet)
 			if ok {
 				if t.RetweetedStatus == nil {
-					go storeTweet(tweets, links, &t)
+					go storeTweet(wtm, wlm, &t)
 				} else {
 					originalTweet := t.RetweetedStatus
-					go storeTweet(tweets, links, originalTweet)
+					go storeTweet(wtm, wlm, originalTweet)
 				}
 			}
 		default:
