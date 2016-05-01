@@ -75,6 +75,8 @@ func getDispayData(word string, respC chan *displayData, reqC chan string) *disp
 	return data
 }
 
+// GetMainEngine creates a git.Engine with routes
+// Exported for testing
 func GetMainEngine() *gin.Engine {
 	respC, reqC = make(chan *displayData), make(chan string)
 	dReqC, dRespC = make(dReqChan), make(dRespChan)

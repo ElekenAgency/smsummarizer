@@ -142,7 +142,7 @@ func contains(s tweetsSlice, e *anaconda.Tweet) (*anaconda.Tweet, int) {
 }
 
 func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.Tweet) {
-	subWords := make([]string, 0)
+	var subWords []string
 	urls := xurls.Relaxed.FindAllString(tweet.Text, -1)
 	resultingURLs := expandURLs(urls)
 	for _, word := range trackedWords {

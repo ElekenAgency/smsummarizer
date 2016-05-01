@@ -22,17 +22,17 @@ func processor(reqMainC <-chan string, respMainC chan<- *displayData) {
 	}
 }
 
-type ByFavLink linksSlice
+type byFavLink linksSlice
 
-func (a ByFavLink) Len() int           { return len(a) }
-func (a ByFavLink) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByFavLink) Less(i, j int) bool { return a[i].Likes > a[j].Likes }
+func (a byFavLink) Len() int           { return len(a) }
+func (a byFavLink) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byFavLink) Less(i, j int) bool { return a[i].Likes > a[j].Likes }
 
-type ByRetLinks linksSlice
+type byRetLinks linksSlice
 
-func (a ByRetLinks) Len() int           { return len(a) }
-func (a ByRetLinks) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByRetLinks) Less(i, j int) bool { return a[i].Retweets > a[j].Retweets }
+func (a byRetLinks) Len() int           { return len(a) }
+func (a byRetLinks) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byRetLinks) Less(i, j int) bool { return a[i].Retweets > a[j].Retweets }
 
 func processLinks(lm linksMap) *linksDisplay {
 	links := getLinksValues(lm)
@@ -40,22 +40,22 @@ func processLinks(lm linksMap) *linksDisplay {
 	linksByRet := make(linksSlice, len(lm))
 	copy(linksByFav, links)
 	copy(linksByRet, links)
-	sort.Sort(ByFavLink(linksByFav))
-	sort.Sort(ByFavLink(linksByRet))
+	sort.Sort(byFavLink(linksByFav))
+	sort.Sort(byFavLink(linksByRet))
 	return &linksDisplay{linksByFav, linksByRet}
 }
 
-type ByFavTweet tweetsSlice
+type byFavTweet tweetsSlice
 
-func (a ByFavTweet) Len() int           { return len(a) }
-func (a ByFavTweet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByFavTweet) Less(i, j int) bool { return a[i].FavoriteCount > a[j].FavoriteCount }
+func (a byFavTweet) Len() int           { return len(a) }
+func (a byFavTweet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byFavTweet) Less(i, j int) bool { return a[i].FavoriteCount > a[j].FavoriteCount }
 
-type ByRetTweet tweetsSlice
+type byRetTweet tweetsSlice
 
-func (a ByRetTweet) Len() int           { return len(a) }
-func (a ByRetTweet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByRetTweet) Less(i, j int) bool { return a[i].RetweetCount > a[j].RetweetCount }
+func (a byRetTweet) Len() int           { return len(a) }
+func (a byRetTweet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byRetTweet) Less(i, j int) bool { return a[i].RetweetCount > a[j].RetweetCount }
 
 func processTweets(tm tweetsMap) *tweetsDisplay {
 	tweets := getTweetValues(tm)
@@ -63,8 +63,8 @@ func processTweets(tm tweetsMap) *tweetsDisplay {
 	tweetsByRet := make(tweetsSlice, len(tm))
 	copy(tweetsByFav, tweets)
 	copy(tweetsByRet, tweets)
-	sort.Sort(ByFavTweet(tweetsByFav))
-	sort.Sort(ByRetTweet(tweetsByRet))
+	sort.Sort(byFavTweet(tweetsByFav))
+	sort.Sort(byRetTweet(tweetsByRet))
 	return &tweetsDisplay{tweetsByFav, tweetsByRet}
 }
 
