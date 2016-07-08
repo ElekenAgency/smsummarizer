@@ -19700,9 +19700,13 @@
 
 	var _tagsTagSectionJsx2 = _interopRequireDefault(_tagsTagSectionJsx);
 
-	var _statisticsStatisticsSectionJsx = __webpack_require__(164);
+	var _statisticsStatisticSectionJsx = __webpack_require__(164);
 
-	var _statisticsStatisticsSectionJsx2 = _interopRequireDefault(_statisticsStatisticsSectionJsx);
+	var _statisticsStatisticSectionJsx2 = _interopRequireDefault(_statisticsStatisticSectionJsx);
+
+	var _socketJs = __webpack_require__(167);
+
+	var _socketJs2 = _interopRequireDefault(_socketJs);
 
 	var App = (function (_Component) {
 		_inherits(App, _Component);
@@ -19712,6 +19716,7 @@
 
 			_get(Object.getPrototypeOf(App.prototype), 'constructor', this).call(this, props);
 			this.state = {
+				activeStatistic: "Tweets",
 				data: {},
 				tags: [],
 				statisticsNames: ['Tweets', 'Links']
@@ -19719,17 +19724,63 @@
 		}
 
 		_createClass(App, [{
+			key: 'componentDidMount',
+			value: function componentDidMount() {
+				var socket = this.socket = new _socketJs2['default']();
+				socket.on('connect', this.onConnect.bind(this));
+				socket.on('disconnect', this.onDisconnect.bind(this));
+				socket.on('tag update', this.onTagUpdate.bind(this));
+				socket.on('tag list', this.onTagList.bind(this));
+			}
+		}, {
+			key: 'onConnect',
+			value: function onConnect() {
+				this.setState({ connected: true });
+				this.socket.emit('tag list', '');
+			}
+		}, {
+			key: 'onDisconnect',
+			value: function onDisconnect() {
+				this.setState({ connected: false });
+			}
+		}, {
+			key: 'onTagList',
+			value: function onTagList(data) {
+				var _this = this;
+
+				var tags = data;
+				tags.map(function (tag) {
+					return _this.addTag(tag);
+				});
+			}
+		}, {
+			key: 'onTagUpdate',
+			value: function onTagUpdate(data) {
+				var tags = data;
+				console.log(data);
+			}
+		}, {
 			key: 'addTag',
 			value: function addTag(name) {
 				var tags = this.state.tags;
 
-				tags.push({ id: tags.length, name: name });
+				var tag = { id: tags.length, name: name };
+				tags.push(tag);
 				this.setState({ tags: tags });
+				this.setState({ activeTag: tag });
 			}
 		}, {
 			key: 'setTag',
 			value: function setTag(activeTag) {
+				var currectActiveTab = this.state.activeTag;
+				/* socket.emit('tag unsubscribe', {tagName: currentActiveTag});*/
 				this.setState({ activeTag: activeTag });
+				this.socket.emit('tag update', { tagName: activeTag.name });
+			}
+		}, {
+			key: 'tabSelect',
+			value: function tabSelect(tabName) {
+				this.setState({ activeStatistic: tabName });
 			}
 		}, {
 			key: 'render',
@@ -19743,11 +19794,11 @@
 						_react2['default'].createElement(_tagsTagSectionJsx2['default'], _extends({}, this.state, {
 							addTag: this.addTag.bind(this),
 							setTag: this.setTag.bind(this)
-						})),
-						_react2['default'].createElement(StatisticsSection, _extends({}, this.state, {
-							tabSelect: this.tabSelect.bind(this)
 						}))
-					)
+					),
+					_react2['default'].createElement(_statisticsStatisticSectionJsx2['default'], _extends({}, this.state, {
+						tabSelect: this.tabSelect.bind(this)
+					}))
 				);
 			}
 		}]);
@@ -19861,22 +19912,22 @@
 
 	var _react2 = _interopRequireDefault(_react);
 
-	var ChannelForm = (function (_Component) {
-		_inherits(ChannelForm, _Component);
+	var TagForm = (function (_Component) {
+		_inherits(TagForm, _Component);
 
-		function ChannelForm() {
-			_classCallCheck(this, ChannelForm);
+		function TagForm() {
+			_classCallCheck(this, TagForm);
 
-			_get(Object.getPrototypeOf(ChannelForm.prototype), 'constructor', this).apply(this, arguments);
+			_get(Object.getPrototypeOf(TagForm.prototype), 'constructor', this).apply(this, arguments);
 		}
 
-		_createClass(ChannelForm, [{
+		_createClass(TagForm, [{
 			key: 'onSubmit',
 			value: function onSubmit(e) {
 				e.preventDefault();
-				var node = this.refs.channel;
-				var channelName = node.value;
-				this.props.addChannel(channelName);
+				var node = this.refs.tag;
+				var tagName = node.value;
+				this.props.addTag(tagName);
 				node.value = '';
 			}
 		}, {
@@ -19890,23 +19941,23 @@
 						{ className: 'form-group' },
 						_react2['default'].createElement('input', {
 							className: 'form-control',
-							placeholder: 'Add Channel',
+							placeholder: 'Add Tag',
 							type: 'text',
-							ref: 'channel'
+							ref: 'tag'
 						})
 					)
 				);
 			}
 		}]);
 
-		return ChannelForm;
+		return TagForm;
 	})(_react.Component);
 
-	ChannelForm.propTypes = {
-		addChannel: _react2['default'].PropTypes.func.isRequired
+	TagForm.propTypes = {
+		addTag: _react2['default'].PropTypes.func.isRequired
 	};
 
-	exports['default'] = ChannelForm;
+	exports['default'] = TagForm;
 	module.exports = exports['default'];
 
 /***/ },
@@ -20016,26 +20067,26 @@
 			value: function onClick(e) {
 				e.preventDefault();
 				var _props = this.props;
-				var setChannel = _props.setChannel;
-				var channel = _props.channel;
+				var setTag = _props.setTag;
+				var tag = _props.tag;
 
-				setChannel(channel);
+				setTag(tag);
 			}
 		}, {
 			key: 'render',
 			value: function render() {
 				var _props2 = this.props;
-				var channel = _props2.channel;
-				var activeChannel = _props2.activeChannel;
+				var tag = _props2.tag;
+				var activeTag = _props2.activeTag;
 
-				var active = channel === activeChannel ? 'active' : '';
+				var active = tag === activeTag ? 'active' : '';
 				return _react2['default'].createElement(
 					'li',
 					{ className: active },
 					_react2['default'].createElement(
 						'a',
 						{ onClick: this.onClick.bind(this) },
-						channel.name
+						tag.name
 					)
 				);
 			}
@@ -20044,13 +20095,13 @@
 		return Tag;
 	})(_react.Component);
 
-	Channel.propTypes = {
-		channel: _react2['default'].PropTypes.object.isRequired,
-		setChannel: _react2['default'].PropTypes.func.isRequired,
-		activeChannel: _react2['default'].PropTypes.object.isRequired
+	Tag.propTypes = {
+		tag: _react2['default'].PropTypes.object.isRequired,
+		setTag: _react2['default'].PropTypes.func.isRequired,
+		activeTag: _react2['default'].PropTypes.object.isRequired
 	};
 
-	exports['default'] = Channel;
+	exports['default'] = Tag;
 	module.exports = exports['default'];
 
 /***/ },
@@ -20062,6 +20113,8 @@
 	Object.defineProperty(exports, '__esModule', {
 		value: true
 	});
+
+	var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
@@ -20085,47 +20138,57 @@
 
 	var _StatisticTabsJsx2 = _interopRequireDefault(_StatisticTabsJsx);
 
-	var StatisticsSection = (function (_Component) {
-		_inherits(StatisticsSection, _Component);
+	var StatisticSection = (function (_Component) {
+		_inherits(StatisticSection, _Component);
 
-		function StatisticsSection() {
-			_classCallCheck(this, StatisticsSection);
+		function StatisticSection() {
+			_classCallCheck(this, StatisticSection);
 
-			_get(Object.getPrototypeOf(StatisticsSection.prototype), 'constructor', this).apply(this, arguments);
+			_get(Object.getPrototypeOf(StatisticSection.prototype), 'constructor', this).apply(this, arguments);
 		}
 
-		_createClass(StatisticsSection, [{
+		_createClass(StatisticSection, [{
 			key: 'render',
 			value: function render() {
+				var activeTag = this.props.activeTag;
+
+				var section = undefined,
+				    name = "";
+				if (activeTag !== undefined) {
+					section = _react2['default'].createElement(
+						'div',
+						{ className: 'panel-body statistics' },
+						_react2['default'].createElement(_StatisticTabsJsx2['default'], this.props),
+						_react2['default'].createElement(_StatisticJsx2['default'], _extends({}, this.props, {
+							stype: this.props.activeStatistic }))
+					);
+				}
 				return _react2['default'].createElement(
 					'div',
-					{ className: 'support panel panel-primary' },
+					{ className: 'statistics-container panel panel-default' },
 					_react2['default'].createElement(
 						'div',
 						{ className: 'panel-heading' },
 						_react2['default'].createElement(
 							'strong',
 							null,
-							this.props.tagName
+							name
 						)
 					),
-					_react2['default'].createElement(
-						'div',
-						{ className: 'panel-body statistics' },
-						_react2['default'].createElement(StatisticsTabs, this.props),
-						_react2['default'].createElement(_StatisticJsx2['default'], this.props)
-					)
+					section
 				);
 			}
 		}]);
 
-		return StatisticsSection;
+		return StatisticSection;
 	})(_react.Component);
 
 	StatisticSection.propTypes = {
 		statisticsNames: _react2['default'].PropTypes.array.isRequired,
 		tabSelect: _react2['default'].PropTypes.func.isRequired,
-		data: _react2['default'].PropTypes.object.isRequired
+		data: _react2['default'].PropTypes.object.isRequired,
+		activeTag: _react2['default'].PropTypes.object.isRequired,
+		activeStatistic: _react2['default'].PropTypes.object.isRequired
 	};
 
 	exports['default'] = StatisticSection;
@@ -20135,21 +20198,21 @@
 /* 165 */
 /***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	'use strict';
 
-	Object.defineProperty(exports, "__esModule", {
+	Object.defineProperty(exports, '__esModule', {
 		value: true
 	});
 
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 	var _react = __webpack_require__(1);
 
@@ -20161,152 +20224,100 @@
 		function Statistic() {
 			_classCallCheck(this, Statistic);
 
-			_get(Object.getPrototypeOf(Statistic.prototype), "constructor", this).apply(this, arguments);
+			_get(Object.getPrototypeOf(Statistic.prototype), 'constructor', this).apply(this, arguments);
 		}
 
 		_createClass(Statistic, [{
-			key: "render",
+			key: 'render',
 			value: function render() {
-				return _react2["default"].createElement(
-					"table",
-					{ "class": "table table-striped" },
-					_react2["default"].createElement(
-						"thead",
-						null,
-						_react2["default"].createElement(
-							"tr",
+				var stype = this.props.stype;
+				var data = this.props.data;
+
+				var actualData = data[stype];
+				console.log(actualData);
+				if (typeof actualData != 'undefined') {
+					return _react2['default'].createElement(
+						'table',
+						{ className: 'table table-striped' },
+						_react2['default'].createElement(
+							'thead',
 							null,
-							_react2["default"].createElement(
-								"th",
+							_react2['default'].createElement(
+								'tr',
 								null,
-								"Row"
-							),
-							_react2["default"].createElement(
-								"th",
-								null,
-								"First Name"
-							),
-							_react2["default"].createElement(
-								"th",
-								null,
-								"Last Name"
-							),
-							_react2["default"].createElement(
-								"th",
-								null,
-								"Email"
-							)
-						)
-					),
-					_react2["default"].createElement(
-						"tbody",
-						null,
-						_react2["default"].createElement(
-							"tr",
-							null,
-							_react2["default"].createElement(
-								"td",
-								null,
-								"1"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"John"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"Carter"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"johncarter@mail.com"
+								_react2['default'].createElement(
+									'th',
+									null,
+									stype
+								),
+								_react2['default'].createElement(
+									'th',
+									null,
+									'Likes'
+								)
 							)
 						),
-						_react2["default"].createElement(
-							"tr",
+						_react2['default'].createElement(
+							'tbody',
 							null,
-							_react2["default"].createElement(
-								"td",
-								null,
-								"2"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"Peter"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"Parker"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"peterparker@mail.com"
-							)
-						),
-						_react2["default"].createElement(
-							"tr",
-							null,
-							_react2["default"].createElement(
-								"td",
-								null,
-								"3"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"John"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"Rambo"
-							),
-							_react2["default"].createElement(
-								"td",
-								null,
-								"johnrambo@mail.com"
-							)
+							actualData.map(function (stat) {
+								return _react2['default'].createElement(
+									'tr',
+									null,
+									_react2['default'].createElement(
+										'td',
+										null,
+										stat.data
+									),
+									_react2['default'].createElement(
+										'td',
+										null,
+										stat.count
+									)
+								);
+							})
 						)
-					)
-				);
+					);
+				} else {
+					return _react2['default'].createElement(
+						'p',
+						null,
+						'No statistics yet'
+					);
+				}
 			}
 		}]);
 
 		return Statistic;
 	})(_react.Component);
 
-	Message.propTypes = {
-		data: _react2["default"].PropTypes.array.isRequired
+	Statistic.propTypes = {
+		stype: _react2['default'].PropTypes.object.isRequired,
+		data: _react2['default'].PropTypes.array.isRequired
 	};
 
-	exports["default"] = Statistic;
-	module.exports = exports["default"];
+	exports['default'] = Statistic;
+	module.exports = exports['default'];
 
 /***/ },
 /* 166 */
 /***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	'use strict';
 
-	Object.defineProperty(exports, "__esModule", {
+	Object.defineProperty(exports, '__esModule', {
 		value: true
 	});
 
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 	var _react = __webpack_require__(1);
 
@@ -20315,38 +20326,42 @@
 	var StatisticTabs = (function (_Component) {
 		_inherits(StatisticTabs, _Component);
 
-		function StatisticTabs() {
+		function StatisticTabs(props) {
 			_classCallCheck(this, StatisticTabs);
 
-			_get(Object.getPrototypeOf(StatisticTabs.prototype), "constructor", this).apply(this, arguments);
+			_get(Object.getPrototypeOf(StatisticTabs.prototype), 'constructor', this).call(this, props);
+			this.onClick = this.onClick.bind(this);
 		}
 
 		_createClass(StatisticTabs, [{
-			key: "onClick",
-			value: function onClick(e) {
-				e.preventDefault();
-				console.log("Called on click");
-				/* this.props.tabSelect()*/
+			key: 'onClick',
+			value: function onClick(name) {
+				this.props.tabSelect(name);
 			}
 		}, {
-			key: "render",
+			key: 'render',
 			value: function render() {
 				var _this = this;
 
-				return _react2["default"].createElement(
-					"div",
+				var activeStatistic = this.props.activeStatistic;
+
+				return _react2['default'].createElement(
+					'div',
 					null,
-					_react2["default"].createElement(
-						"ul",
-						{ "class": "nav nav-tabs" },
+					_react2['default'].createElement(
+						'ul',
+						{ className: 'nav nav-tabs' },
 						this.props.statisticsNames.map(function (stat) {
-							return _react2["default"].createElement(
-								"li",
-								null,
-								_react2["default"].createElement(
-									"a",
-									{ onClick: _this.onClick.bind(_this) },
-									"stat"
+							var active = stat === activeStatistic ? 'active' : '';
+							return _react2['default'].createElement(
+								'li',
+								{ className: active },
+								_react2['default'].createElement(
+									'a',
+									{ onClick: function () {
+											return _this.onClick(stat);
+										}, id: stat },
+									stat
 								)
 							);
 						})
@@ -20358,13 +20373,392 @@
 		return StatisticTabs;
 	})(_react.Component);
 
-	StatisticForm.propTypes = {
-		statisticsNames: _react2["default"].PropTypes.array.isRequired,
-		tabSelect: _react2["default"].PropTypes.func.isRequired
+	StatisticTabs.propTypes = {
+		statisticsNames: _react2['default'].PropTypes.array.isRequired,
+		tabSelect: _react2['default'].PropTypes.func.isRequired
 	};
 
-	exports["default"] = StatisticTabs;
-	module.exports = exports["default"];
+	exports['default'] = StatisticTabs;
+	module.exports = exports['default'];
+
+/***/ },
+/* 167 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, '__esModule', {
+		value: true
+	});
+
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+	var _events = __webpack_require__(168);
+
+	var Socket = (function () {
+		function Socket() {
+			var ws = arguments.length <= 0 || arguments[0] === undefined ? new WebSocket("ws://localhost:5000") : arguments[0];
+			var ee = arguments.length <= 1 || arguments[1] === undefined ? new _events.EventEmitter() : arguments[1];
+
+			_classCallCheck(this, Socket);
+
+			this.ws = ws;
+			this.ee = ee;
+			ws.onmessage = this.message.bind(this);
+			ws.onopen = this.open.bind(this);
+			ws.onclose = this.close.bind(this);
+		}
+
+		_createClass(Socket, [{
+			key: 'on',
+			value: function on(name, fn) {
+				this.ee.on(name, fn);
+			}
+		}, {
+			key: 'off',
+			value: function off(name, fn) {
+				this.ee.removeListener(name, fn);
+			}
+		}, {
+			key: 'emit',
+			value: function emit(name, data) {
+				var message = JSON.stringify({ name: name, data: data });
+				this.ws.send(message);
+			}
+		}, {
+			key: 'message',
+			value: function message(e) {
+				try {
+					var message = JSON.parse(e.data);
+					console.log(message);
+					this.ee.emit(message.name, message.data);
+				} catch (err) {
+					this.ee.emit('error', err);
+				}
+			}
+		}, {
+			key: 'open',
+			value: function open() {
+				this.ee.emit('connect');
+			}
+		}, {
+			key: 'close',
+			value: function close() {
+				this.ee.emit('disconnect');
+			}
+		}]);
+
+		return Socket;
+	})();
+
+	exports['default'] = Socket;
+	module.exports = exports['default'];
+
+/***/ },
+/* 168 */
+/***/ function(module, exports) {
+
+	// Copyright Joyent, Inc. and other Node contributors.
+	//
+	// Permission is hereby granted, free of charge, to any person obtaining a
+	// copy of this software and associated documentation files (the
+	// "Software"), to deal in the Software without restriction, including
+	// without limitation the rights to use, copy, modify, merge, publish,
+	// distribute, sublicense, and/or sell copies of the Software, and to permit
+	// persons to whom the Software is furnished to do so, subject to the
+	// following conditions:
+	//
+	// The above copyright notice and this permission notice shall be included
+	// in all copies or substantial portions of the Software.
+	//
+	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+	// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+	// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+	// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+	// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+	// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+	function EventEmitter() {
+	  this._events = this._events || {};
+	  this._maxListeners = this._maxListeners || undefined;
+	}
+	module.exports = EventEmitter;
+
+	// Backwards-compat with node 0.10.x
+	EventEmitter.EventEmitter = EventEmitter;
+
+	EventEmitter.prototype._events = undefined;
+	EventEmitter.prototype._maxListeners = undefined;
+
+	// By default EventEmitters will print a warning if more than 10 listeners are
+	// added to it. This is a useful default which helps finding memory leaks.
+	EventEmitter.defaultMaxListeners = 10;
+
+	// Obviously not all Emitters should be limited to 10. This function allows
+	// that to be increased. Set to zero for unlimited.
+	EventEmitter.prototype.setMaxListeners = function(n) {
+	  if (!isNumber(n) || n < 0 || isNaN(n))
+	    throw TypeError('n must be a positive number');
+	  this._maxListeners = n;
+	  return this;
+	};
+
+	EventEmitter.prototype.emit = function(type) {
+	  var er, handler, len, args, i, listeners;
+
+	  if (!this._events)
+	    this._events = {};
+
+	  // If there is no 'error' event listener then throw.
+	  if (type === 'error') {
+	    if (!this._events.error ||
+	        (isObject(this._events.error) && !this._events.error.length)) {
+	      er = arguments[1];
+	      if (er instanceof Error) {
+	        throw er; // Unhandled 'error' event
+	      }
+	      throw TypeError('Uncaught, unspecified "error" event.');
+	    }
+	  }
+
+	  handler = this._events[type];
+
+	  if (isUndefined(handler))
+	    return false;
+
+	  if (isFunction(handler)) {
+	    switch (arguments.length) {
+	      // fast cases
+	      case 1:
+	        handler.call(this);
+	        break;
+	      case 2:
+	        handler.call(this, arguments[1]);
+	        break;
+	      case 3:
+	        handler.call(this, arguments[1], arguments[2]);
+	        break;
+	      // slower
+	      default:
+	        args = Array.prototype.slice.call(arguments, 1);
+	        handler.apply(this, args);
+	    }
+	  } else if (isObject(handler)) {
+	    args = Array.prototype.slice.call(arguments, 1);
+	    listeners = handler.slice();
+	    len = listeners.length;
+	    for (i = 0; i < len; i++)
+	      listeners[i].apply(this, args);
+	  }
+
+	  return true;
+	};
+
+	EventEmitter.prototype.addListener = function(type, listener) {
+	  var m;
+
+	  if (!isFunction(listener))
+	    throw TypeError('listener must be a function');
+
+	  if (!this._events)
+	    this._events = {};
+
+	  // To avoid recursion in the case that type === "newListener"! Before
+	  // adding it to the listeners, first emit "newListener".
+	  if (this._events.newListener)
+	    this.emit('newListener', type,
+	              isFunction(listener.listener) ?
+	              listener.listener : listener);
+
+	  if (!this._events[type])
+	    // Optimize the case of one listener. Don't need the extra array object.
+	    this._events[type] = listener;
+	  else if (isObject(this._events[type]))
+	    // If we've already got an array, just append.
+	    this._events[type].push(listener);
+	  else
+	    // Adding the second element, need to change to array.
+	    this._events[type] = [this._events[type], listener];
+
+	  // Check for listener leak
+	  if (isObject(this._events[type]) && !this._events[type].warned) {
+	    if (!isUndefined(this._maxListeners)) {
+	      m = this._maxListeners;
+	    } else {
+	      m = EventEmitter.defaultMaxListeners;
+	    }
+
+	    if (m && m > 0 && this._events[type].length > m) {
+	      this._events[type].warned = true;
+	      console.error('(node) warning: possible EventEmitter memory ' +
+	                    'leak detected. %d listeners added. ' +
+	                    'Use emitter.setMaxListeners() to increase limit.',
+	                    this._events[type].length);
+	      if (typeof console.trace === 'function') {
+	        // not supported in IE 10
+	        console.trace();
+	      }
+	    }
+	  }
+
+	  return this;
+	};
+
+	EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+	EventEmitter.prototype.once = function(type, listener) {
+	  if (!isFunction(listener))
+	    throw TypeError('listener must be a function');
+
+	  var fired = false;
+
+	  function g() {
+	    this.removeListener(type, g);
+
+	    if (!fired) {
+	      fired = true;
+	      listener.apply(this, arguments);
+	    }
+	  }
+
+	  g.listener = listener;
+	  this.on(type, g);
+
+	  return this;
+	};
+
+	// emits a 'removeListener' event iff the listener was removed
+	EventEmitter.prototype.removeListener = function(type, listener) {
+	  var list, position, length, i;
+
+	  if (!isFunction(listener))
+	    throw TypeError('listener must be a function');
+
+	  if (!this._events || !this._events[type])
+	    return this;
+
+	  list = this._events[type];
+	  length = list.length;
+	  position = -1;
+
+	  if (list === listener ||
+	      (isFunction(list.listener) && list.listener === listener)) {
+	    delete this._events[type];
+	    if (this._events.removeListener)
+	      this.emit('removeListener', type, listener);
+
+	  } else if (isObject(list)) {
+	    for (i = length; i-- > 0;) {
+	      if (list[i] === listener ||
+	          (list[i].listener && list[i].listener === listener)) {
+	        position = i;
+	        break;
+	      }
+	    }
+
+	    if (position < 0)
+	      return this;
+
+	    if (list.length === 1) {
+	      list.length = 0;
+	      delete this._events[type];
+	    } else {
+	      list.splice(position, 1);
+	    }
+
+	    if (this._events.removeListener)
+	      this.emit('removeListener', type, listener);
+	  }
+
+	  return this;
+	};
+
+	EventEmitter.prototype.removeAllListeners = function(type) {
+	  var key, listeners;
+
+	  if (!this._events)
+	    return this;
+
+	  // not listening for removeListener, no need to emit
+	  if (!this._events.removeListener) {
+	    if (arguments.length === 0)
+	      this._events = {};
+	    else if (this._events[type])
+	      delete this._events[type];
+	    return this;
+	  }
+
+	  // emit removeListener for all listeners on all events
+	  if (arguments.length === 0) {
+	    for (key in this._events) {
+	      if (key === 'removeListener') continue;
+	      this.removeAllListeners(key);
+	    }
+	    this.removeAllListeners('removeListener');
+	    this._events = {};
+	    return this;
+	  }
+
+	  listeners = this._events[type];
+
+	  if (isFunction(listeners)) {
+	    this.removeListener(type, listeners);
+	  } else if (listeners) {
+	    // LIFO order
+	    while (listeners.length)
+	      this.removeListener(type, listeners[listeners.length - 1]);
+	  }
+	  delete this._events[type];
+
+	  return this;
+	};
+
+	EventEmitter.prototype.listeners = function(type) {
+	  var ret;
+	  if (!this._events || !this._events[type])
+	    ret = [];
+	  else if (isFunction(this._events[type]))
+	    ret = [this._events[type]];
+	  else
+	    ret = this._events[type].slice();
+	  return ret;
+	};
+
+	EventEmitter.prototype.listenerCount = function(type) {
+	  if (this._events) {
+	    var evlistener = this._events[type];
+
+	    if (isFunction(evlistener))
+	      return 1;
+	    else if (evlistener)
+	      return evlistener.length;
+	  }
+	  return 0;
+	};
+
+	EventEmitter.listenerCount = function(emitter, type) {
+	  return emitter.listenerCount(type);
+	};
+
+	function isFunction(arg) {
+	  return typeof arg === 'function';
+	}
+
+	function isNumber(arg) {
+	  return typeof arg === 'number';
+	}
+
+	function isObject(arg) {
+	  return typeof arg === 'object' && arg !== null;
+	}
+
+	function isUndefined(arg) {
+	  return arg === void 0;
+	}
+
 
 /***/ }
 /******/ ]);

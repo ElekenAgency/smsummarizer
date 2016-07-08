@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
+	"net/http"
 )
 
 var upgrader = websocket.Upgrader{
@@ -17,26 +18,28 @@ type Router struct {
 
 type Handler func(*Client, interface{})
 
-func newRouter() *Router {
+func NewRouter() *Router {
 	return &Router{
 		rules: make(map[string]Handler),
 	}
 }
 
 func (r *Router) Handle(msgName string, handler Handler) {
-	r[msgName] = handler
+	r.rules[msgName] = handler
 }
 
 func (e *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	socket, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-	client := newClient(socket)
+	client := NewClient(socket, e.FindHandler)
 	go client.Write()
 	client.Read()
 }
 
-func (r *Router) FindHandler(msg string) Handler {
+func (r *Router) FindHandler(msg string) (Handler, bool) {
 	handler, found := r.rules[msg]
+	return handler, found
 }

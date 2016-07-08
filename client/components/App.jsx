@@ -1,23 +1,44 @@
 import React, {Component} from 'react';
 import TagSection from './tags/TagSection.jsx';
 import StatisticSection from './statistics/StatisticSection.jsx';
+import Socket from '../socket.js';
 
 class App extends Component{
 	constructor(props){
 		super(props);
 		this.state = {
 			activeStatistic: "Tweets",
-			data: {"Tweets":[
-				{data:"Some tweet1", count:25},
-				{data:"Some tweet2", count:22},
-			],
-				"Links":[
-					{data:"Link 1", count:12},
-					{data:"Link 2", count:12},
-				]},
+			data: {},
 			tags: [],
 			statisticsNames: ['Tweets', 'Links']
 		};
+	}
+
+	componentDidMount() {
+		let socket = this.socket = new Socket();
+		socket.on('connect', this.onConnect.bind(this));
+		socket.on('disconnect', this.onDisconnect.bind(this));
+		socket.on('tag update', this.onTagUpdate.bind(this));
+		socket.on('tag list', this.onTagList.bind(this));
+	}
+
+	onConnect() {
+		this.setState({connected: true});
+		this.socket.emit('tag list', '');
+	}
+
+	onDisconnect() {
+		this.setState({connected: false});
+	}
+
+	onTagList(data) {
+		let tags = data;
+		tags.map(tag=> this.addTag(tag));
+	}
+
+	onTagUpdate(data) {
+		let tags = data;
+		console.log(data);
 	}
 
 	addTag(name){
@@ -29,7 +50,10 @@ class App extends Component{
 	}
 
 	setTag(activeTag){
+		let currectActiveTab = this.state.activeTag;
+		/* socket.emit('tag unsubscribe', {tagName: currentActiveTag});*/
 		this.setState({activeTag});
+		this.socket.emit('tag update', {tagName: activeTag.name});
 	}
 
 	tabSelect(tabName) {

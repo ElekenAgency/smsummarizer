@@ -25,4 +25,7 @@ _testmain.go
 
 # Node modules
 *node_modules*
+
+# output
+out/*
 smsummarizer

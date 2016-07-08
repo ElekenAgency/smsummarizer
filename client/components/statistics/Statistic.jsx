@@ -5,27 +5,32 @@ class Statistic extends Component{
 		let {stype} = this.props;
 		let {data} = this.props;
 		let actualData = data[stype];
-		return (
-			<table className="table table-striped">
-			<thead>
-			<tr>
-			<th>{stype}</th>
-			<th>Likes</th>
-			</tr>
-			</thead>
-			<tbody>{
-				actualData.map(stat => {
-					return (
+		console.log(actualData);
+		if (typeof actualData != 'undefined') {
+			return (
+				<table className="table table-striped">
+					<thead>
 						<tr>
-							<td>{stat.data}</td>
-							<td>{stat.count}</td>
+							<th>{stype}</th>
+							<th>Likes</th>
 						</tr>
-					)
-				})
-			}
-			</tbody>
-			</table>
-		);
+					</thead>
+					<tbody>{
+						actualData.map(stat => {
+							return (
+								<tr>
+									<td>{stat.data}</td>
+									<td>{stat.count}</td>
+								</tr>
+							)
+						})
+								 }
+					</tbody>
+				</table>
+		)
+		} else {
+			return(<p>No statistics yet</p>);
+		}
 	}
 }
 

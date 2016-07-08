@@ -126,7 +126,7 @@ func expandURLs(urls []string) linksSlice {
 			resultingURLs = append(resultingURLs,
 				&linkData{sourceTweets: nil, Title: title, URL: finalURL})
 		} else {
-			fmt.Printf("Couldn't find the final URL for %s", url)
+			fmt.Printf("Couldn't find the final URL for %s\n", url)
 		}
 	}
 	return resultingURLs

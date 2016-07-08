@@ -81,43 +81,24 @@ func GetMainEngine() *gin.Engine {
 	respC, reqC = make(chan *displayData), make(chan string)
 	dReqC, dRespC = make(dReqChan), make(dRespChan)
 	go processor(reqC, respC)
-	r := gin.Default()
-	r.LoadHTMLGlob("templates/*")
-	// index router
-	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"title": "Main website",
-			"words": trackedWords,
-		})
-	})
-	web := r.Group("/web")
-	{
-		web.GET("/", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "index.tmpl", gin.H{
-				"title": "Web",
-				"words": trackedWords,
-			})
-		})
-		web.GET("/:word", func(c *gin.Context) {
-			word := c.Param("word")
-			if isBeingTracked(word) {
-				data := getDispayData(word, respC, reqC)
-				c.HTML(http.StatusOK, "word.tmpl", gin.H{
-					"title":            "Main website",
-					"tweetsByLikes":    data.tweets.tweetsByFav,
-					"tweetsByRetweets": data.tweets.tweetsByRet,
-					"linksByLikes":     data.links.linksByFav,
-					"linksByRetweets":  data.links.linksByRet,
-				})
-			} else {
-				c.String(http.StatusNotFound, "This words is not followed")
-			}
-		})
-	}
-	return r
+	router := NewRouter()
+	router.Handle("tag list", listTag)
+	router.Handle("tag update", updateTag)
+	// r := gin.Default()
+	// r.LoadHTMLFiles("index.html")
+	// r.StaticFile("/app.css", "app.css")
+	// r.StaticFile("/bundle.js", "bundle.js")
+	// r.GET("/", func(c *gin.Context) {
+	//	c.HTML(200, "index.html", nil)
+	// })
+
+	http.Handle("/ws", router)
+	http.ListenAndServe(":5000", nil)
+	return nil
 }
 
 func main() {
 	flag.Parse()
-	GetMainEngine().Run(":5000")
+	GetMainEngine()
+	// GetMainEngine().Run(":5000")
 }
