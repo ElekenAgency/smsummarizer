@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
-	"github.com/mvdan/xurls"
+	"mvdan.cc/xurls"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -143,7 +143,7 @@ func contains(s tweetsSlice, e *anaconda.Tweet) (*anaconda.Tweet, int) {
 
 func storeTweet(tweetMap wordToTweetMap, links wordToLinksMap, tweet *anaconda.Tweet) {
 	var subWords []string
-	urls := xurls.Relaxed.FindAllString(tweet.Text, -1)
+	urls := xurls.Strict().FindAllString(tweet.Text, -1)
 	resultingURLs := expandURLs(urls)
 	for _, word := range trackedWords {
 		if strings.Contains(strings.ToLower(tweet.Text), word) {
